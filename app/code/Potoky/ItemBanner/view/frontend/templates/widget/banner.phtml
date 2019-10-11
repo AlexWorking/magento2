@@ -1,0 +1,5 @@
+<?php if($block->getData('is_active')): ?>
+    <h3><?= $block->escapeHtml($block->getData('is_active')) ?></h3>
+    <h3><?= $block->escapeHtml(__('Size:')) ?> <?= $block->escapeHtml($block->getData('is_active')) ?></h3>
+    <p>This is sample widget. Perform your code here.</p>
+<?php endif; ?>

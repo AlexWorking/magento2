@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<widgets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Widget:etc/widget.xsd">
+    <widget class="Potoky\ItemBanner\Block\Widget\Banner" id="potoky_itembanner_widget">
+        <label>Banner inserted into products</label>
+        <description>Depending on set position appears in place of a product block in the product list or grid</description>
+        <parameters>
+            <parameter name="is_active" xsi:type="select" visible="true">
+                <label>Is This Banner Active</label>
+                <default>0</default>
+                <source_model>adminhtml/system_config_source_yesno</source_model>
+            </parameter>
+        </parameters>
+    </widget>
+</widgets>
