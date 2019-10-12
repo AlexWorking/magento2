@@ -5,10 +5,8 @@
         <label>Banner inserted into products</label>
         <description>Depending on set position appears in place of a product block in the product list or grid</description>
         <parameters>
-            <parameter name="is_active" xsi:type="select" visible="true">
+            <parameter name="is_active" xsi:type="select" visible="true" source_model="Magento\Config\Model\Config\Source\Yesno">
                 <label>Is This Banner Active</label>
-                <default>0</default>
-                <source_model>adminhtml/system_config_source_yesno</source_model>
             </parameter>
         </parameters>
     </widget>
