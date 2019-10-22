@@ -8,6 +8,17 @@
             <parameter name="is_active" xsi:type="select" visible="true" source_model="Magento\Config\Model\Config\Source\Yesno">
                 <label>Is This Banner Active</label>
             </parameter>
+            <parameter name="image" xsi:type="block" visible="true">
+                <label translate="true">Image</label>
+                <description translate="true">Image For Banner</description>
+                <block class="Potoky\ItemBanner\Block\Adminhtml\Image">
+                    <data>
+                        <item name="button" xsi:type="array">
+                            <item name="open" xsi:type="string">Choose Image...</item>
+                        </item>
+                    </data>
+                </block>
+            </parameter>
         </parameters>
     </widget>
 </widgets>
