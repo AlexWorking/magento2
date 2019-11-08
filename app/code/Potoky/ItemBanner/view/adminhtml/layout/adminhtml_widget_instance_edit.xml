@@ -6,7 +6,7 @@
  */
 -->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="admin-2columns-left" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
-    <referenceBlock name="potoky_itembanner_instance_parameter">
+    <block class="Potoky\ItemBanner\Block\Adminhtml\Image" name="potoky_itembanner_instance_parameter">
         <uiComponent name="potoky_itembanner_image_uploader"/>
-    </referenceBlock>
+    </block>
 </page>

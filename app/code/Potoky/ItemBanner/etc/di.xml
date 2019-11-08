@@ -6,4 +6,5 @@
             </argument>
         </arguments>
     </type>
+    <type name="Potoky\ItemBanner\Block\Adminhtml\Image" shared="true"/>
 </config>
