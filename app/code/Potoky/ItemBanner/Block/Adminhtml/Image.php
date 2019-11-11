@@ -8,61 +8,63 @@ use Magento\Backend\Block\Template\Context as TemplateContext;
 use Magento\Framework\Data\Form\Element\Factory as FormElementFactory;
 use Magento\Backend\Block\Template;
 use Magento\Ui\Component\Form\Element\DataType\Media\Image as ImageUiComponent;
+use Magento\Framework\ObjectManager\ObjectManager;
 class Image extends Template
 {
     public $jsConfig = '<script type="text/x-magento-init">{
         "*": {
-                Magento_Ui/js/core/app": {"types": {
-                    "dataSource": [],
-                    "container": {
-                                "extends": "potoky_itembanner_image_uploader"
-                    },
-                    "components": {
-                        "image": {
-                            "type": "form.image",
-                            "name": "image",
-                            "dataScope": "image",
-                            "config": {
-                                "initialMediaGalleryOpenSubpath": "catalog\/category",
-                                "component": "Magento_Ui\/js\/form\/element\/image-uploader",
-                                "template": "ui\/form\/element\/uploader\/image",
-                                "dataType": "string",
-                                "formElement": "imageUploader",
-                                "visible": true,
-                                "required": false,
-                                "label": "Category Image",
-                                "sortOrder": "40",
-                                "notice": null,
-                                "default": null,
-                                "size": null,
-                                "scopeLabel": "[STORE VIEW]",
-                                "componentType": "field",
-                                "previewTmpl": "Magento_Catalog\/image-preview",
-                                "uploaderConfig": {
-                                    "url": "http:\/\/item-banner2.lm\/admin\/catalog\/category_image\/upload\/"
-                                },
-                                "maxFileSize": 2097152,
-                                "allowedExtensions": "jpg jpeg gif png",
+            "Magento_Ui/js/core/app": {
+                "types": {
+                    "image": {
+                        "extends": "potoky_itembanner_image_uploader"
+                    }
+                },    
+                "components": {
+                    "potoky_itembanner_image_uploader": {
+                        "type": "form.image",
+                        "name": "image",
+                        "dataScope": "image",
+                        "config": {
+                            "initialMediaGalleryOpenSubpath": "itembanner",
+                            "component": "Magento_Ui\/js\/form\/element\/image-uploader",
+                            "template": "ui\/form\/element\/uploader\/image",
+                            "dataType": "string",
+                            "formElement": "imageUploader",
+                            "visible": true,
+                            "required": false,
+                            "sortOrder": "40",
+                            "notice": null,
+                            "default": null,
+                            "size": null,
+                            "componentType": "field",
+                            "previewTmpl": "Magento_Catalog\/image-preview",
+                            "uploaderConfig": {
+                                "url": "http:\/\/item-banner2.lm\/admin\/itembanner\/image\/upload\/"
+                            },
+                            "maxFileSize": 2097152,
+                            "allowedExtensions": "jpg jpeg gif png",
+                            "openDialogTitle": "Media Gallery",
+                            "elementTmpl": "ui\/form\/element\/uploader\/image",
+                            "source": "category",
+                            "mediaGallery": {
+                                "openDialogUrl": "http:\/\/item-banner2.lm\/admin\/cms\/wysiwyg_images\/index\/",
                                 "openDialogTitle": "Media Gallery",
-                                "elementTmpl": "ui\/form\/element\/uploader\/image",
-                                "source": "category",
-                                "mediaGallery": {
-                                    "openDialogUrl": "http:\/\/item-banner2.lm\/admin\/cms\/wysiwyg_images\/index\/",
-                                    "openDialogTitle": "Media Gallery",
-                                    "initialOpenSubpath": "catalog\/category",
-                                    "storeId": "0"
-                                }
+                                "initialOpenSubpath": "itembanner",
+                                "storeId": "0"
                             }
-                        },
+                        }
                     }
                 }
-        }                
+            }
+        }
     }</script>';
     //protected $imageUiComponent;
     /**
      * @var \Magento\Framework\Data\Form\Element\Factory
      */
     protected $elementFactory;
+
+    protected $objectManager;
 
     /**
      * @param ImageUiComponent $imageUiComponent
@@ -74,18 +76,22 @@ class Image extends Template
         //ImageUiComponent $imageUiComponent,
         TemplateContext $context,
         FormElementFactory $elementFactory,
+        ObjectManager $objectManager,
         $data = []
     ) {
         //$this->imageUiComponent = $imageUiComponent;
         $this->elementFactory = $elementFactory;
-        $this->test = "SET";
+        $this->objectManager = $objectManager;
         parent::__construct($context, $data);
     }
 
     public function prepareElementHtml($element)
     {
         //$this->imageUiComponent->prepare();
-        $element->setData('after_element_html', $this->jsConfig);
+        $beforeDiv = '<div data-bind="scope:\'potoky_itembanner_image_uploader\'">
+    <!-- ko template: getTemplate() --><!-- /ko -->
+</div>';
+        $element->setData('after_element_html', $beforeDiv . $this->jsConfig);
         return $element;
     }
 
