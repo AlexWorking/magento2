@@ -1,0 +1,54 @@
+<?php
+?>
+<div data-bind="scope:'potoky_itembanner_image_uploader'">
+    <!-- ko template: getTemplate() --><!-- /ko -->
+</div>
+<script type="text/x-magento-init">
+    {
+        "*": {
+            "Magento_Ui/js/core/app": {
+                "types": {
+                    "image": {
+                        "extends": "potoky_itembanner_image_uploader"
+                    }
+                },
+                "components": {
+                    "potoky_itembanner_image_uploader": {
+                        "type": "form.image",
+                        "name": "image",
+                        "dataScope": "image",
+                        "config": {
+                            "initialMediaGalleryOpenSubpath": "itembanner",
+                            "component": "Magento_Ui\/js\/form\/element\/image-uploader",
+                            "template": "ui\/form\/element\/uploader\/image",
+                            "dataType": "string",
+                            "formElement": "imageUploader",
+                            "visible": true,
+                            "required": false,
+                            "sortOrder": "40",
+                            "notice": null,
+                            "default": null,
+                            "size": null,
+                            "componentType": "field",
+                            "previewTmpl": "Magento_Catalog\/image-preview",
+                            "uploaderConfig": {
+                                "url": "http:\/\/item-banner2.lm\/admin\/itembanner\/image\/upload\/"
+                            },
+                            "maxFileSize": 2097152,
+                            "allowedExtensions": "jpg jpeg gif png",
+                            "openDialogTitle": "Media Gallery",
+                            "elementTmpl": "ui\/form\/element\/uploader\/image",
+                            "source": "category",
+                            "mediaGallery": {
+                                "openDialogUrl": "http:\/\/item-banner2.lm\/admin\/cms\/wysiwyg_images\/index\/",
+                                "openDialogTitle": "Media Gallery",
+                                "initialOpenSubpath": "itembanner",
+                                "storeId": "0"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+</script>

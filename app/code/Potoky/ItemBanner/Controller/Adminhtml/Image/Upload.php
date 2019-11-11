@@ -15,7 +15,7 @@ class Upload extends \Magento\Backend\App\Action implements HttpPostActionInterf
     /**
      * Image uploader
      *
-     * @var \Magento\Catalog\Model\ImageUploader
+     * @var \Potoky\ItemBanner\Model\ImageUploader
      */
     protected $imageUploader;
 
@@ -23,11 +23,11 @@ class Upload extends \Magento\Backend\App\Action implements HttpPostActionInterf
      * Upload constructor.
      *
      * @param \Magento\Backend\App\Action\Context $context
-     * @param \Magento\Catalog\Model\ImageUploader $imageUploader
+     * @param \Potoky\ItemBanner\Model\ImageUploader $imageUploader
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
-        \Magento\Catalog\Model\ImageUploader $imageUploader
+        \Potoky\ItemBanner\Model\ImageUploader $imageUploader
     ) {
         parent::__construct($context);
         $this->imageUploader = $imageUploader;
