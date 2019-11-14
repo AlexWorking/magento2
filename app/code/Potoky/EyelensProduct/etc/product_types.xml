@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Catalog:etc/product_types.xsd">
+    <type name="eyelens" label="Eyelens Product" modelInstance="Potoky\EyelensProduct\Model\Product\Type\Eyelens" indexPriority="60" sortOrder="80" isQty="true">
+        <priceModel instance="Potoky\EyelensProduct\Model\Product\Type\Eyelens\Price" />
+    </type>
+</config>
