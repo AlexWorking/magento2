@@ -19,7 +19,7 @@ use Magento\Eav\Api\Data\AttributeSetInterface;
 use Magento\Framework\Locale\CurrencyInterface;
 use Magento\Framework\TestFramework\Unit\Helper\ObjectManager;
 use Magento\GroupedProduct\Model\Product\Type\Grouped as GroupedProductType;
-use Magento\GroupedProduct\Ui\DataProvider\Product\Form\Modifier\Grouped;
+use Magento\GroupedProduct\Ui\DataProvider\Product\Form\Modifier\Eyelens;
 use Magento\Store\Api\Data\StoreInterface;
 use Magento\Catalog\Model\Product;
 use Magento\GroupedProduct\Model\Product\Link\CollectionProvider\Grouped as GroupedProducts;
@@ -146,7 +146,7 @@ class GroupedTest extends AbstractModifierTest
             ->willReturn(self::LINKED_PRODUCT_SKU);
         $this->linkMock->expects($this->any())
             ->method('getLinkType')
-            ->willReturn(Grouped::LINK_TYPE);
+            ->willReturn(Eyelens::LINK_TYPE);
         $this->linkRepositoryMock = $this->getMockBuilder(ProductLinkRepositoryInterface::class)
             ->setMethods(['getList'])
             ->getMockForAbstractClass();
@@ -210,7 +210,7 @@ class GroupedTest extends AbstractModifierTest
             ->method('get')
             ->willReturn($attributeSetMock);
 
-        return $this->objectManager->getObject(Grouped::class, [
+        return $this->objectManager->getObject(Eyelens::class, [
             'locator' => $this->locatorMock,
             'productLinkRepository' => $this->linkRepositoryMock,
             'productRepository' => $this->productRepositoryMock,
@@ -229,7 +229,7 @@ class GroupedTest extends AbstractModifierTest
      */
     public function testModifyMeta()
     {
-        $this->assertArrayHasKey(Grouped::GROUP_GROUPED, $this->getModel()->modifyMeta([]));
+        $this->assertArrayHasKey(Eyelens::GROUP_GROUPED, $this->getModel()->modifyMeta([]));
     }
 
     /**
@@ -240,7 +240,7 @@ class GroupedTest extends AbstractModifierTest
         $expectedData = [
             self::PRODUCT_ID => [
                 'links' => [
-                    Grouped::LINK_TYPE => [
+                    Eyelens::LINK_TYPE => [
                         [
                             'id' => self::LINKED_PRODUCT_ID,
                             'name' => self::LINKED_PRODUCT_NAME,
