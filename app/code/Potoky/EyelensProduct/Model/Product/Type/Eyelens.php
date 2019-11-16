@@ -16,14 +16,14 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      *
      * @var string
      */
-    protected $_keyAssociatedProducts = '_cache_instance_associated_products';
+    protected $_keyTwicedProducts = '_cache_instance_associated_products';
 
     /**
      * Cache key for Associated Product Ids
      *
      * @var string
      */
-    protected $_keyAssociatedProductIds = '_cache_instance_associated_product_ids';
+    protected $_keyTwicedProductIds = '_cache_instance_associated_product_ids';
 
     /**
      * Cache key for Status Filters
@@ -173,7 +173,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      */
     public function getAssociatedProducts($product)
     {
-        if (!$product->hasData($this->_keyAssociatedProducts)) {
+        if (!$product->hasData($this->_keyTwicedProducts)) {
             $associatedProducts = [];
 
             $this->setSaleableStatus($product);
@@ -193,9 +193,9 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
                 $associatedProducts[] = $item;
             }
 
-            $product->setData($this->_keyAssociatedProducts, $associatedProducts);
+            $product->setData($this->_keyTwicedProducts, $associatedProducts);
         }
-        return $product->getData($this->_keyAssociatedProducts);
+        return $product->getData($this->_keyTwicedProducts);
     }
 
     /**
@@ -207,7 +207,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      */
     public function flushAssociatedProductsCache($product)
     {
-        return $product->unsetData($this->_keyAssociatedProducts);
+        return $product->unsetData($this->_keyTwicedProducts);
     }
 
     /**
@@ -267,15 +267,15 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      */
     public function getAssociatedProductIds($product)
     {
-        if (!$product->hasData($this->_keyAssociatedProductIds)) {
+        if (!$product->hasData($this->_keyTwicedProductIds)) {
             $associatedProductIds = [];
             /** @var $item \Magento\Catalog\Model\Product */
             foreach ($this->getAssociatedProducts($product) as $item) {
                 $associatedProductIds[] = $item->getId();
             }
-            $product->setData($this->_keyAssociatedProductIds, $associatedProductIds);
+            $product->setData($this->_keyTwicedProductIds, $associatedProductIds);
         }
-        return $product->getData($this->_keyAssociatedProductIds);
+        return $product->getData($this->_keyTwicedProductIds);
     }
 
     /**
@@ -459,7 +459,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     public function beforeSave($product)
     {
         //clear cached associated links
-        $product->unsetData($this->_keyAssociatedProducts);
+        $product->unsetData($this->_keyTwicedProducts);
         if ($product->hasData('product_options') && !empty($product->getData('product_options'))) {
             //phpcs:ignore Magento2.Exceptions.DirectThrow
             throw new \Exception('Custom options for eyelens product type are not supported');

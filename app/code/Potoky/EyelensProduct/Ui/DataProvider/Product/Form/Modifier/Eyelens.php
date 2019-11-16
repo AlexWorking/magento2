@@ -34,7 +34,7 @@ class Eyelens extends AbstractModifier
     const GROUP_EYELENS = 'eyelens';
     const GROUP_CONTENT = 'content';
     const SORT_ORDER = 20;
-    const LINK_TYPE = 'essence';
+    const LINK_TYPE = 'twiced';
 
     /**
      * @var LocatorInterface
