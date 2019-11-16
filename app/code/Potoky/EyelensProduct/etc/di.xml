@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="Magento\Catalog\Model\Product\LinkTypeProvider">
+        <arguments>
+            <argument name="linkTypes" xsi:type="array">
+                <item name="essence" xsi:type="const">Potoky\EyelensProduct\Model\Product\Type\Eyelens::LINK_TYPE_EYELENS</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Magento\Catalog\Model\ProductLink\CollectionProvider">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="essence" xsi:type="object">Potoky\EyelensProduct\Model\Product\Link\CollectionProvider\Eyelens</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Magento\Catalog\Model\ProductLink\Converter\ConverterPool">
+        <arguments>
+            <argument name="converters" xsi:type="array">
+                <item name="essence" xsi:type="object">\Potoky\EyelensProduct\Model\Product\Link\ProductEntity\Converter</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

@@ -21,7 +21,7 @@ use Magento\Catalog\Helper\Image as ImageHelper;
 use Magento\Eav\Api\AttributeSetRepositoryInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\Locale\CurrencyInterface;
-use Magento\GroupedProduct\Model\Product\Link\CollectionProvider\Grouped as GroupedProducts;
+use Potoky\EyelensProduct\Model\Product\Link\CollectionProvider\Eyelens as EyelensProducts;
 use Magento\Framework\App\ObjectManager;
 use Magento\Catalog\Api\Data\ProductLinkInterfaceFactory;
 
@@ -34,7 +34,7 @@ class Eyelens extends AbstractModifier
     const GROUP_EYELENS = 'eyelens';
     const GROUP_CONTENT = 'content';
     const SORT_ORDER = 20;
-    const LINK_TYPE = 'associated';
+    const LINK_TYPE = 'essence';
 
     /**
      * @var LocatorInterface
@@ -102,9 +102,9 @@ class Eyelens extends AbstractModifier
     private static $codeQty = 'qty';
 
     /**
-     * @var GroupedProducts
+     * @var EyelensProducts
      */
-    private $groupedProducts;
+    private $eyelensProducts;
 
     /**
      * @var ProductLinkInterfaceFactory
@@ -121,7 +121,7 @@ class Eyelens extends AbstractModifier
      * @param AttributeSetRepositoryInterface $attributeSetRepository
      * @param CurrencyInterface $localeCurrency
      * @param array $uiComponentsConfig
-     * @param GroupedProducts $groupedProducts
+     * @param EyelensProducts $eyelensProducts
      * @param \Magento\Catalog\Api\Data\ProductLinkInterfaceFactory|null $productLinkFactory
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
@@ -135,7 +135,7 @@ class Eyelens extends AbstractModifier
         AttributeSetRepositoryInterface $attributeSetRepository,
         CurrencyInterface $localeCurrency,
         array $uiComponentsConfig = [],
-        GroupedProducts $groupedProducts = null,
+        EyelensProducts $eyelensProducts = null,
         \Magento\Catalog\Api\Data\ProductLinkInterfaceFactory $productLinkFactory = null
     ) {
         $this->locator = $locator;
@@ -147,8 +147,8 @@ class Eyelens extends AbstractModifier
         $this->status = $status;
         $this->localeCurrency = $localeCurrency;
         $this->uiComponentsConfig = array_replace_recursive($this->uiComponentsConfig, $uiComponentsConfig);
-        $this->groupedProducts = $groupedProducts ?: ObjectManager::getInstance()->get(
-            \Magento\GroupedProduct\Model\Product\Link\CollectionProvider\Grouped::class
+        $this->eyelensProducts = $eyelensProducts ?: ObjectManager::getInstance()->get(
+            \Potoky\EyelensProduct\Model\Product\Link\CollectionProvider\Eyelens::class
         );
         $this->productLinkFactory = $productLinkFactory ?: ObjectManager::getInstance()
             ->get(\Magento\Catalog\Api\Data\ProductLinkInterfaceFactory::class);
@@ -165,7 +165,7 @@ class Eyelens extends AbstractModifier
         if ($modelId) {
             $storeId = $this->locator->getStore()->getId();
             $data[$product->getId()]['links'][self::LINK_TYPE] = [];
-            $linkedItems = $this->groupedProducts->getLinkedProducts($product);
+            $linkedItems = $this->eyelensProducts->getLinkedProducts($product);
             usort($linkedItems, function ($a, $b) {
                 return $a->getPosition() <=> $b->getPosition();
             });
