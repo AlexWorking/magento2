@@ -182,7 +182,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
                 $product
             )->addAttributeToSelect(
                 ['name', 'price', 'special_price', 'special_from_date', 'special_to_date', 'tax_class_id', 'image']
-            )->addFilterByRequiredOptions()->setPositionOrder()->addStoreFilter(
+            )->setPositionOrder()->addStoreFilter(
                 $this->getStoreFilter($product)
             )->addAttributeToFilter(
                 'status',

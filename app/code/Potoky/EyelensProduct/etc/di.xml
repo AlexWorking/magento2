@@ -36,4 +36,9 @@
                 type="Potoky\EyelensProduct\Model\Plugins\MatchCheck"
                 disabled="false"/>
     </type>
+    <type name="Magento\Checkout\Model\Cart">
+        <plugin name="potoky_eyelens_add_product"
+                type="Potoky\EyelensProduct\Model\Plugins\AddProduct"
+                disabled="false"/>
+    </type>
 </config>
