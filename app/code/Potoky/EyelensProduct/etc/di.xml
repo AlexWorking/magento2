@@ -21,4 +21,14 @@
             </argument>
         </arguments>
     </type>
+    <type name="Potoky\EyelensProduct\Ui\DataProvider\Product\Form\Modifier\Eyelens">
+        <plugin name="potoky_eyelens_forbid_modify_data"
+                type="Potoky\EyelensProduct\Model\Plugins\ForbidEyelens"
+                disabled="false"/>
+    </type>
+    <type name="Magento\GroupedProduct\Ui\DataProvider\Product\Form\Modifier\Grouped">
+        <plugin name="potoky_eyelens_forbid_modify_data"
+                type="Potoky\EyelensProduct\Model\Plugins\ForbidGrouped"
+                disabled="false"/>
+    </type>
 </config>

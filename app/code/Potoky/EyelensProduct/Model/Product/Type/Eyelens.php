@@ -16,14 +16,14 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      *
      * @var string
      */
-    protected $_keyTwicedProducts = '_cache_instance_associated_products';
+    protected $_keyTwicedProducts = '_cache_instance_twiced_products';
 
     /**
      * Cache key for Associated Product Ids
      *
      * @var string
      */
-    protected $_keyTwicedProductIds = '_cache_instance_associated_product_ids';
+    protected $_keyTwicedProductIds = '_cache_instance_twiced_product_ids';
 
     /**
      * Cache key for Status Filters
