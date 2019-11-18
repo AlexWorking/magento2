@@ -20,6 +20,8 @@ use Magento\Framework\DB\Adapter\AdapterInterface;
 class Eyelens extends AbstractEntity
 {
     const ENTITY_CODE = 'eyelens';
+    const ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING = 'requiredAttributeMissing';
+    const ERROR_CODE_INCORRECT_CUSTOM_OPTIONS = 'incorrectCustomOptions';
 
     /**
      *
@@ -71,7 +73,6 @@ class Eyelens extends AbstractEntity
         ImportData $importData,
         ResourceConnection $resource,
         ResourceHelper $resourceHelper,
-        StringUtils $string,
         ProcessingErrorAggregatorInterface $errorAggregator,
         ProductRepositoryInterface $productRepository
     ) {
@@ -83,7 +84,8 @@ class Eyelens extends AbstractEntity
         $this->resource = $resource;
         $this->connection = $resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $this->errorAggregator = $errorAggregator;
-        $this->string = $string;
+        $this->errorMessageTemplates[self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING] = 'Missing required value for field: %s.';
+        $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS] = 'Custom Options are built incorrectly.';
 
         $this->initMessageTemplates();
     }
@@ -95,10 +97,29 @@ class Eyelens extends AbstractEntity
     private function initMessageTemplates()
     {
         $this->addMessageTemplate(
-            'invalidAttributeName',
-            __(self::ERROR_CODE_INVALID_ATTRIBUTE)
+            self::ERROR_CODE_INVALID_ATTRIBUTE,
+            __($this->errorMessageTemplates[self::ERROR_CODE_INVALID_ATTRIBUTE])
         );
-        //$this->addMessageTemplate()
+        $this->addMessageTemplate(
+            self::ERROR_CODE_COLUMN_EMPTY_HEADER,
+            __($this->errorMessageTemplates[self::ERROR_CODE_COLUMN_EMPTY_HEADER])
+        );
+        $this->addMessageTemplate(
+            self::ERROR_CODE_COLUMN_NAME_INVALID,
+            __($this->errorMessageTemplates[self::ERROR_CODE_COLUMN_NAME_INVALID])
+        );
+        $this->addMessageTemplate(
+            self::ERROR_CODE_COLUMN_NOT_FOUND,
+            __($this->errorMessageTemplates[self::ERROR_CODE_COLUMN_NOT_FOUND])
+        );
+        $this->addMessageTemplate(
+            self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING,
+            __($this->errorMessageTemplates[self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING])
+        );
+        $this->addMessageTemplate(
+            self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS,
+            __($this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS])
+        );
     }
 
     /**
@@ -123,9 +144,15 @@ class Eyelens extends AbstractEntity
     {
         foreach ($this->_permanentAttributes as $permanentAttribute) {
             if (!$rowData[$permanentAttribute]) {
-                $this->addRowError('requiredAttribute_' . $permanentAttribute, $rowNum);
+                $this->addRowError(
+                    self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING,
+                    $rowNum,
+                    $permanentAttribute
+                );
+                $this->_validatedRows[$rowNum] = false;
             }
         }
+
 
         if (isset($this->_validatedRows[$rowNum])) {
             return !$this->getErrorAggregator()->isRowInvalid($rowNum);
@@ -147,13 +174,5 @@ class Eyelens extends AbstractEntity
     {
 
         return true;
-    }
-
-    protected function deleteEntity()
-    {
-    }
-
-    protected function saveAndReplaceEntity()
-    {
     }
 }
