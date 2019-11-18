@@ -6,11 +6,17 @@ namespace Potoky\EyelensProduct\Model\Product\Type;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\GroupedProduct\Model\Product\Type\Grouped;
-
+use Magento\Catalog\Model\ProductFactory;
 class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 {
     const TYPE_CODE = 'eyelens';
     const LINK_TYPE_EYELENS = 6;
+
+    /**
+     *
+     */
+    private $productFactory;
+
     /**
      * Cache key for Associated Products
      *
@@ -78,6 +84,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     protected $msrpData;
 
     /**
+     * @param ProductFactory
      * @param \Magento\Catalog\Model\Product\Option $catalogProductOption
      * @param \Magento\Eav\Model\Config $eavConfig
      * @param \Magento\Catalog\Model\Product\Type $catalogProductType
@@ -96,6 +103,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
+        ProductFactory $productFactory,
         \Magento\Catalog\Model\Product\Option $catalogProductOption,
         \Magento\Eav\Model\Config $eavConfig,
         \Magento\Catalog\Model\Product\Type $catalogProductType,
@@ -112,6 +120,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
         \Magento\Msrp\Helper\Data $msrpData,
         \Magento\Framework\Serialize\Serializer\Json $serializer = null
     ) {
+        $this->productFactory =$productFactory;
         $this->productLinks = $catalogProductLink;
         $this->_storeManager = $storeManager;
         $this->_catalogProductStatus = $catalogProductStatus;
@@ -339,64 +348,19 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      */
     protected function _prepareProduct(\Magento\Framework\DataObject $buyRequest, $product, $processMode)
     {
-        $products = [];
-        $associatedProductsInfo = [];
-        $isStrictProcessMode = $this->_isStrictProcessMode($processMode);
-        $productsInfo = $this->getProductInfo($buyRequest, $product, $isStrictProcessMode);
-        if (is_string($productsInfo)) {
-            return $productsInfo;
-        }
-        $associatedProducts = !$isStrictProcessMode || !empty($productsInfo)
-            ? $this->getAssociatedProducts($product)
-            : false;
+        $associatedId = $this->getAssociatedProductIds($product)[0];
+        $firstLens = $this->productFactory->create()->loadByAttribute('entity_id', $associatedId);
 
-        foreach ($associatedProducts as $subProduct) {
-            $qty = $productsInfo[$subProduct->getId()];
-            if (!is_numeric($qty) || empty($qty)) {
-                continue;
-            }
-
-            $_result = $subProduct->getTypeInstance()->_prepareProduct($buyRequest, $subProduct, $processMode);
-
-            if (is_string($_result)) {
-                return $_result;
-            } elseif (!isset($_result[0])) {
-                return __('Cannot process the item.')->render();
-            }
-
-            if ($isStrictProcessMode) {
-                $_result[0]->setCartQty($qty);
-                $_result[0]->addCustomOption('product_type', self::TYPE_CODE, $product);
-                $_result[0]->addCustomOption(
-                    'info_buyRequest',
-                    $this->serializer->serialize(
-                        [
-                            'super_product_config' => [
-                                'product_type' => self::TYPE_CODE,
-                                'product_id' => $product->getId(),
-                            ],
-                        ]
-                    )
-                );
-                $products[] = $_result[0];
-            } else {
-                $associatedProductsInfo[] = [$subProduct->getId() => $qty];
-                $product->addCustomOption('associated_product_' . $subProduct->getId(), $qty);
-            }
+        if (!$firstLens->getId()) {
+            return __('Current Eyelens Product has no linked real product.')->render();
         }
 
-        if (!$isStrictProcessMode || count($associatedProductsInfo)) {
-            $product->addCustomOption('product_type', self::TYPE_CODE, $product);
-            $product->addCustomOption('info_buyRequest', $this->serializer->serialize($buyRequest->getData()));
+        $secondLens = $this->productFactory->create()->loadByAttribute('entity_id', $associatedId);
 
-            $products[] = $product;
-        }
+        $firstLens->addCustomOption('separate_add', 'first');
+        $secondLens->addCustomOption('separate_add', 'second');
 
-        if (count($products)) {
-            return $products;
-        }
-
-        return __('Please specify the quantity of product(s).')->render();
+        return [$firstLens, $secondLens];
     }
 
     /**
