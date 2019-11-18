@@ -357,7 +357,11 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 
         $secondLens = $this->productFactory->create()->loadByAttribute('entity_id', $associatedId);
 
-        $firstLens->addCustomOption('separate_add', 'first');
+        $qty = $buyRequest->getQty();
+
+        $firstLens->addCustomOption('add ' . $product->getSku(), 'first')->setQty($qty)->setCartQty($qty);
+        $secondLens->addCustomOption('add ' . $product->getSku(), 'second')->setQty($qty)->setCartQty($qty);
+
         $secondLens->addCustomOption('separate_add', 'second');
 
         return [$firstLens, $secondLens];
