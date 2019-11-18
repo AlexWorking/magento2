@@ -46,11 +46,29 @@ class Eyelens extends AbstractEntity
      */
     protected $needColumnCheck = true;
 
+    /**
+     * Permanent entity columns.
+     *
+     * @var string[]
+     */
+    protected $_permanentAttributes = ['sku', 'name', 'price'];
+
+    /**
+     * Eyelens constructor.
+     * @param JsonHelper $jsonHelper
+     * @param ImportExport $importExportData
+     * @param ImportData $importData
+     * @param Config $config
+     * @param ResourceConnection $resource
+     * @param ResourceHelper $resourceHelper
+     * @param StringUtils $string
+     * @param ProcessingErrorAggregatorInterface $errorAggregator
+     * @param ProductRepositoryInterface $productRepository
+     */
     public function __construct(
         JsonHelper $jsonHelper,
         ImportExport $importExportData,
         ImportData $importData,
-        Config $config,
         ResourceConnection $resource,
         ResourceHelper $resourceHelper,
         StringUtils $string,
@@ -65,6 +83,7 @@ class Eyelens extends AbstractEntity
         $this->resource = $resource;
         $this->connection = $resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $this->errorAggregator = $errorAggregator;
+        $this->string = $string;
 
         $this->initMessageTemplates();
     }
@@ -77,8 +96,9 @@ class Eyelens extends AbstractEntity
     {
         $this->addMessageTemplate(
             'invalidAttributeName',
-            __('Some fields have incorrect names')
+            __(self::ERROR_CODE_INVALID_ATTRIBUTE)
         );
+        //$this->addMessageTemplate()
     }
 
     /**
@@ -91,9 +111,29 @@ class Eyelens extends AbstractEntity
         return static::ENTITY_CODE;
     }
 
+    /**
+     * Row validation
+     *
+     * @param array $rowData
+     * @param int $rowNum
+     *
+     * @return bool
+     */
     public function validateRow(array $rowData, $rowNum)
     {
-        // TODO: Implement validateRow() method.
+        foreach ($this->_permanentAttributes as $permanentAttribute) {
+            if (!$rowData[$permanentAttribute]) {
+                $this->addRowError('requiredAttribute_' . $permanentAttribute, $rowNum);
+            }
+        }
+
+        if (isset($this->_validatedRows[$rowNum])) {
+            return !$this->getErrorAggregator()->isRowInvalid($rowNum);
+        }
+
+        $this->_validatedRows[$rowNum] = true;
+
+        return !$this->getErrorAggregator()->isRowInvalid($rowNum);
     }
 
     /**
@@ -105,17 +145,6 @@ class Eyelens extends AbstractEntity
      */
     protected function _importData(): bool
     {
-        switch ($this->getBehavior()) {
-            case Import::BEHAVIOR_DELETE:
-                $this->deleteEntity();
-                break;
-            case Import::BEHAVIOR_REPLACE:
-                $this->saveAndReplaceEntity();
-                break;
-            case Import::BEHAVIOR_APPEND:
-                $this->saveAndReplaceEntity();
-                break;
-        }
 
         return true;
     }
