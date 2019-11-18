@@ -3,10 +3,9 @@
 
 namespace Potoky\EyelensProduct\Model\Product\Type;
 
-
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\GroupedProduct\Model\Product\Type\Grouped;
 use Magento\Catalog\Model\ProductFactory;
+
 class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 {
     const TYPE_CODE = 'eyelens';
