@@ -32,7 +32,7 @@ class Eyelens extends AbstractEntity
     /**
      *
      */
-    private $preliminaryImportData = [];
+    private $preparedCustomOptionsInfo = [];
 
     /**
      *
@@ -160,29 +160,29 @@ class Eyelens extends AbstractEntity
                     $permanentAttribute
                 );
                 $this->_validatedRows[$rowNum] = false;
-            } else {
-                $this->preliminaryImportData[$rowNum][$permanentAttribute] = $rowData[$permanentAttribute];
             }
         }
 
-        $this->preliminaryImportData[$rowNum]['custom_options'] = $this->validateCustomOptions($rowData['custom_options'], $rowNum);
-
-        if (!$this->preliminaryImportData[$rowNum]['custom_options']) {
-            $this->_validatedRows[$rowNum] = false;
+        if (isset($rowData['custom_options'])) {
+            $preparedCustomOptions = $this->validateAndPrepareCustomOptions($rowData['custom_options'], $rowNum);
+            if ($preparedCustomOptions === false) {
+                $this->_validatedRows[$rowNum] = false;
+            } else {
+                $this->preparedCustomOptionsInfo = [$rowNum => $preparedCustomOptions];
+            }
         }
 
-        if (isset($this->_validatedRows[$rowNum]) && $this->_validatedRows[$rowNum] === false) {
-            unset($this->preliminaryImportData[$rowNum]);
-        } else {
-            $this->preliminaryImportData[$rowNum]['brand'] = $rowData['brand'];
-            $this->_validatedRows[$rowNum] = true;
-        }
+        $this->_validatedRows[$rowNum] = true;
 
         return !$this->getErrorAggregator()->isRowInvalid($rowNum);
     }
 
-    private function validateCustomOptions($customOptions, $rowNum)
+    private function validateAndPrepareCustomOptions($customOptions, $rowNum)
     {
+        if ($customOptions === 0 || $customOptions === null) {
+
+            return [];
+        }
         $customOptions = explode(PHP_EOL, $customOptions);
         $pattern = '#^[*]?[^:\n]+:[^:\n]*$#';
         $refinedOptions = [];
@@ -192,7 +192,7 @@ class Eyelens extends AbstractEntity
                 $keyValue = explode(':', $customOption);
                 $key = $keyValue[0];
                 $value = ltrim($keyValue[1]);
-                if (strpos($key, '*') == 0) {
+                if (strpos($key, '*') === 0) {
                     $key = substr($key, 1);
                     $refinedOptions[$key]['isRequired'] = true;
                 } else {
@@ -212,14 +212,11 @@ class Eyelens extends AbstractEntity
         return $refinedOptions;
     }
 
-    private function compressPreliminaryImport()
+    private function compressPreliminaryImportData()
     {
-        $skus = array_column($this->preliminaryImportData, 'sku');
-        $unique = array_unique($skus);
-
-        $preliminaryReindexed = array_values($this->preliminaryImportData);
+        $preliminaryImportData = array_values($this->_dataSourceModel->getNextBunch());
         $processedSkusArr = [];
-        foreach ($preliminaryReindexed as $num => $val) {
+        foreach ($preliminaryImportData as $num => $val) {
             if (!in_array($val['sku'], $processedSkusArr)) {
                 $this->finalImportData[] = $val;
                 $processedSkusArr[$val['sku']] = $num;
@@ -265,6 +262,18 @@ class Eyelens extends AbstractEntity
         return $mergeArray;
     }
 
+    protected function _prepareRowForDb(array $rowData)
+    {
+        $rowData = parent::_prepareRowForDb($rowData);
+        $key = $this->_getSource()->key();
+
+        if (isset($this->preparedCustomOptionsInfo[$key])) {
+            $rowData['custom_options'] = $this->preparedCustomOptionsInfo[$key];
+        }
+
+        return $rowData;
+    }
+
     /**
      * Import data
      *
@@ -275,7 +284,7 @@ class Eyelens extends AbstractEntity
     protected function _importData(): bool
     {
         $bunch = $this->_dataSourceModel->getNextBunch();
-        $this->compressPreliminaryImport();
+        $this->compressPreliminaryImportData();
 
         return true;
     }
