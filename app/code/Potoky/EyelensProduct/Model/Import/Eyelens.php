@@ -190,7 +190,15 @@ class Eyelens extends AbstractEntity
             $customOption =trim($customOption);
             if (preg_match($pattern, $customOption)) {
                 $keyValue = explode(':', $customOption);
-                $refinedOptions[$keyValue[0]] = ltrim($keyValue[1]);
+                $key = $keyValue[0];
+                $value = ltrim($keyValue[1]);
+                if (strpos($key, '*') == 0) {
+                    $key = substr($key, 1);
+                    $refinedOptions[$key]['isRequired'] = true;
+                } else {
+                    $refinedOptions[$key]['isRequired'] = false;
+                }
+                $refinedOptions[$key]['values'][] = $value;
             } else {
                 $this->addRowError(
                     self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS,
@@ -202,14 +210,6 @@ class Eyelens extends AbstractEntity
         }
 
         return $refinedOptions;
-    }
-
-    public function validateData()
-    {
-        $parent =  parent::validateData();
-        $this->compressPreliminaryImport();
-
-        return $parent;
     }
 
     private function compressPreliminaryImport()
@@ -233,20 +233,36 @@ class Eyelens extends AbstractEntity
 
     private function mergeRecords($currentRecord, $mergeRecordNumber)
     {
-        $mergeRecordData = $this->finalImportData[$mergeRecordNumber];
         if ($this->finalImportData[$mergeRecordNumber]['name'] != $currentRecord['name'] ||
             $this->finalImportData[$mergeRecordNumber]['price'] != $currentRecord['price']) {
 
             return false;
         }
-        $mergedCustomOptions = $this->mergeCustomOptions();
 
-        if ($mergedCustomOptions) {
-            $this->finalImportData[$mergeRecordNumber]['custom_options'] = $mergedCustomOptions;
-            $this->finalImportData[$mergeRecordNumber]['brand'] += $currentRecord['brand'];
-        }
+        $this->finalImportData[$mergeRecordNumber]['custom_options'] = $this->mergeCustomOptions(
+            $this->finalImportData[$mergeRecordNumber]['custom_options'],
+            $currentRecord['custom_options']
+        );
+        $this->finalImportData[$mergeRecordNumber]['brand'] += $currentRecord['brand'];
 
         return true;
+    }
+
+    private function mergeCustomOptions($options1, $options2)
+    {
+        $mergeArray = array_merge_recursive(
+            $options1,
+            $options2
+        );
+
+        foreach ($mergeArray as &$finalOption) {
+            $finalOption['isRequired'] = (bool) ($finalOption['isRequired'][0] + $finalOption['isRequired'][1]);
+            $finalOption['values'] = array_unique($finalOption['values']);
+        }
+
+        unset($finalOption);
+
+        return $mergeArray;
     }
 
     /**
@@ -258,6 +274,8 @@ class Eyelens extends AbstractEntity
      */
     protected function _importData(): bool
     {
+        $bunch = $this->_dataSourceModel->getNextBunch();
+        $this->compressPreliminaryImport();
 
         return true;
     }
