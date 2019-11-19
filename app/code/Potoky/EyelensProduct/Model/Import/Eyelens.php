@@ -32,7 +32,12 @@ class Eyelens extends AbstractEntity
     /**
      *
      */
-    private $preparedImport = [];
+    private $preliminaryImportData = [];
+
+    /**
+     *
+     */
+    private $finalImportData = [];
 
     /**
      * Valid column names
@@ -156,19 +161,20 @@ class Eyelens extends AbstractEntity
                 );
                 $this->_validatedRows[$rowNum] = false;
             } else {
-                $this->preparedImport[$rowNum][$permanentAttribute] = $rowData[$permanentAttribute];
+                $this->preliminaryImportData[$rowNum][$permanentAttribute] = $rowData[$permanentAttribute];
             }
         }
 
-        $this->preparedImport[$rowNum]['custom_options'] = $this->validateCustomOptions($rowData['custom_options'], $rowNum);
+        $this->preliminaryImportData[$rowNum]['custom_options'] = $this->validateCustomOptions($rowData['custom_options'], $rowNum);
 
-        if (!$this->preparedImport[$rowNum]['custom_options']) {
+        if (!$this->preliminaryImportData[$rowNum]['custom_options']) {
             $this->_validatedRows[$rowNum] = false;
         }
 
         if (isset($this->_validatedRows[$rowNum]) && $this->_validatedRows[$rowNum] === false) {
-            unset($this->preparedImport[$rowNum]);
+            unset($this->preliminaryImportData[$rowNum]);
         } else {
+            $this->preliminaryImportData[$rowNum]['brand'] = $rowData['brand'];
             $this->_validatedRows[$rowNum] = true;
         }
 
@@ -178,7 +184,7 @@ class Eyelens extends AbstractEntity
     private function validateCustomOptions($customOptions, $rowNum)
     {
         $customOptions = explode(PHP_EOL, $customOptions);
-        $pattern = '#[*]?[^:\n]+:[^:\n]*#';
+        $pattern = '#^[*]?[^:\n]+:[^:\n]*$#';
         $refinedOptions = [];
         foreach ($customOptions as $customOption) {
             $customOption =trim($customOption);
@@ -201,14 +207,46 @@ class Eyelens extends AbstractEntity
     public function validateData()
     {
         $parent =  parent::validateData();
-        $this->mergePreparedImport();
+        $this->compressPreliminaryImport();
 
         return $parent;
     }
 
-    private function mergePreparedImport()
+    private function compressPreliminaryImport()
     {
+        $skus = array_column($this->preliminaryImportData, 'sku');
+        $unique = array_unique($skus);
 
+        $preliminaryReindexed = array_values($this->preliminaryImportData);
+        $processedSkusArr = [];
+        foreach ($preliminaryReindexed as $num => $val) {
+            if (!in_array($val['sku'], $processedSkusArr)) {
+                $this->finalImportData[] = $val;
+                $processedSkusArr[$val['sku']] = $num;
+            } else {
+                $this->mergeRecords($val, $processedSkusArr[$val['sku']]);
+
+            }
+        }
+
+    }
+
+    private function mergeRecords($currentRecord, $mergeRecordNumber)
+    {
+        $mergeRecordData = $this->finalImportData[$mergeRecordNumber];
+        if ($this->finalImportData[$mergeRecordNumber]['name'] != $currentRecord['name'] ||
+            $this->finalImportData[$mergeRecordNumber]['price'] != $currentRecord['price']) {
+
+            return false;
+        }
+        $mergedCustomOptions = $this->mergeCustomOptions();
+
+        if ($mergedCustomOptions) {
+            $this->finalImportData[$mergeRecordNumber]['custom_options'] = $mergedCustomOptions;
+            $this->finalImportData[$mergeRecordNumber]['brand'] += $currentRecord['brand'];
+        }
+
+        return true;
     }
 
     /**
