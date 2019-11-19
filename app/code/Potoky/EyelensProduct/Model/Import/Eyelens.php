@@ -30,6 +30,11 @@ class Eyelens extends AbstractEntity
     private $productRepository;
 
     /**
+     *
+     */
+    private $preparedImport = [];
+
+    /**
      * Valid column names
      *
      * @array
@@ -150,17 +155,60 @@ class Eyelens extends AbstractEntity
                     $permanentAttribute
                 );
                 $this->_validatedRows[$rowNum] = false;
+            } else {
+                $this->preparedImport[$rowNum][$permanentAttribute] = $rowData[$permanentAttribute];
             }
         }
 
+        $this->preparedImport[$rowNum]['custom_options'] = $this->validateCustomOptions($rowData['custom_options'], $rowNum);
 
-        if (isset($this->_validatedRows[$rowNum])) {
-            return !$this->getErrorAggregator()->isRowInvalid($rowNum);
+        if (!$this->preparedImport[$rowNum]['custom_options']) {
+            $this->_validatedRows[$rowNum] = false;
         }
 
-        $this->_validatedRows[$rowNum] = true;
+        if (isset($this->_validatedRows[$rowNum]) && $this->_validatedRows[$rowNum] === false) {
+            unset($this->preparedImport[$rowNum]);
+        } else {
+            $this->_validatedRows[$rowNum] = true;
+        }
 
         return !$this->getErrorAggregator()->isRowInvalid($rowNum);
+    }
+
+    private function validateCustomOptions($customOptions, $rowNum)
+    {
+        $customOptions = explode(PHP_EOL, $customOptions);
+        $pattern = '#[*]?[^:\n]+:[^:\n]*#';
+        $refinedOptions = [];
+        foreach ($customOptions as $customOption) {
+            $customOption =trim($customOption);
+            if (preg_match($pattern, $customOption)) {
+                $keyValue = explode(':', $customOption);
+                $refinedOptions[$keyValue[0]] = ltrim($keyValue[1]);
+            } else {
+                $this->addRowError(
+                    self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS,
+                    $rowNum
+                );
+
+                return false;
+            }
+        }
+
+        return $refinedOptions;
+    }
+
+    public function validateData()
+    {
+        $parent =  parent::validateData();
+        $this->mergePreparedImport();
+
+        return $parent;
+    }
+
+    private function mergePreparedImport()
+    {
+
     }
 
     /**
