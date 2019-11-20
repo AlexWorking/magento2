@@ -7,6 +7,8 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\ImportExport\Model\Import\Entity\AbstractEntity;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\ProductFactory;
+use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\Api\SearchCriteriaInterface;
 use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingError;
 use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingErrorAggregatorInterface;
 use Magento\Framework\Json\Helper\Data as JsonHelper;
@@ -18,6 +20,7 @@ use Magento\Framework\Stdlib\StringUtils;
 use Exception;
 use Magento\ImportExport\Model\Import;
 use Magento\Framework\DB\Adapter\AdapterInterface;
+use Magento\Theme\Model\Theme;
 
 class Eyelens extends AbstractEntity
 {
@@ -33,9 +36,16 @@ class Eyelens extends AbstractEntity
     private $productRepository;
 
     /**
+     *
      * @var ProductFactory
      */
     private $productFactory;
+
+    /**
+     *
+     * @var SearchCriteriaBuilder
+     */
+    private $searchCriteriaBuilder;
 
     /**
      *
@@ -93,10 +103,12 @@ class Eyelens extends AbstractEntity
         ResourceHelper $resourceHelper,
         ProcessingErrorAggregatorInterface $errorAggregator,
         ProductRepositoryInterface $productRepository,
-        ProductFactory $productFactory
+        ProductFactory $productFactory,
+        SearchCriteriaBuilder $searchCriteriaBuilder
     ) {
-        $this->productReposirory = $productRepository;
+        $this->productRepository = $productRepository;
         $this->productFactory = $productFactory;
+        $this->searchCriteriaBuilder = $searchCriteriaBuilder;
         $this->jsonHelper = $jsonHelper;
         $this->_importExportData = $importExportData;
         $this->_resourceHelper = $resourceHelper;
@@ -231,43 +243,44 @@ class Eyelens extends AbstractEntity
     {
         $preliminaryImportData = array_values($this->_dataSourceModel->getNextBunch());
         $processedSkusArr = [];
-        $corruptedSkus = [];
+        $corruptedSkusArr = [];
         foreach ($preliminaryImportData as $num => $val) {
-            if (in_array($val['sku'], $corruptedSkus)) {
+            if (in_array($val['sku'], $corruptedSkusArr)) {
                 continue;
             }
 
             if (!in_array($val['sku'], $processedSkusArr)) {
-                $this->finalImportData[] = $val;
-                $processedSkusArr[$val['sku']] = $num;
-            } else if (!$this->mergeRecords($val, $processedSkusArr[$val['sku']])) {
+                $this->finalImportData[$val['sku']] = $val;
+                $processedSkusArr[] = $val['sku'];
+            } else if (!$this->mergeRecords($val, $val['sku'])) {
                 $this->addRowError(
                     self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE,
                     $processedSkusArr[$val['sku']],
                     $val['sku']
                 );
+                $corruptedSkusArr[] = $val['sku'];
             }
         }
     }
 
-    private function mergeRecords($currentRecord, $mergeRecordNumber)
+    private function mergeRecords($currentRecord, $meringSku)
     {
-        if ($this->finalImportData[$mergeRecordNumber] === $currentRecord) {
-            $this->finalImportData[$mergeRecordNumber] = $currentRecord;
+        if ($this->finalImportData[$meringSku] === $currentRecord) {
+            $this->finalImportData[$meringSku] = $currentRecord;
 
             return true;
         }
-        if ($this->finalImportData[$mergeRecordNumber]['name'] != $currentRecord['name'] ||
-            $this->finalImportData[$mergeRecordNumber]['price'] != $currentRecord['price']) {
+        if ($this->finalImportData[$meringSku]['name'] != $currentRecord['name'] ||
+            $this->finalImportData[$meringSku]['price'] != $currentRecord['price']) {
 
             return false;
         }
 
-        $this->finalImportData[$mergeRecordNumber]['custom_options'] = $this->mergeCustomOptions(
-            $this->finalImportData[$mergeRecordNumber]['custom_options'],
+        $this->finalImportData[$meringSku]['custom_options'] = $this->mergeCustomOptions(
+            $this->finalImportData[$meringSku]['custom_options'],
             $currentRecord['custom_options']
         );
-        $this->finalImportData[$mergeRecordNumber]['brand'] .= $currentRecord['brand'];
+        $this->finalImportData[$meringSku]['brand'] .= $currentRecord['brand'];
 
         return true;
     }
@@ -332,6 +345,23 @@ class Eyelens extends AbstractEntity
         return $rowData;
     }
 
+    private function buildOptionArray($sku)
+    {
+        $optionsBefore = $this->finalImportData[$sku];
+        $optionsAfter = [];
+        foreach ($optionsBefore as $option) {
+            $optionsAfter[] = [
+                [
+                    'title' => $option,
+                    'price_type' => 'fixed',
+                    'price' => '5',
+                    'type' => 'drop_down',
+                    'is_require' => '0',
+                ]
+            ];
+        }
+    }
+
     /**
      * Import data
      *
@@ -343,6 +373,17 @@ class Eyelens extends AbstractEntity
     {
         $this->compressPreliminaryImportData();
 
+        $processedSkus = [];
+        /** @var SearchCriteriaInterface $searchCriteria */
+        $searchCriteria = $this->searchCriteriaBuilder->addFilter('sku', ['Simp2', 'Simp24'], 'in')->create();
+        $products = $this->productRepository->getList($searchCriteria)->getItems();
+        foreach ($products as $product) {
+            $sku = $product->getSku();
+            $options = $this->buildOptionArray($sku);
+
+
+            $processedSkus[] = $sku;
+        }
         return true;
     }
 }
