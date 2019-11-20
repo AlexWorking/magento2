@@ -6,6 +6,8 @@ namespace Potoky\EyelensProduct\Model\Import;
 use Magento\Framework\App\ResourceConnection;
 use Magento\ImportExport\Model\Import\Entity\AbstractEntity;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\ProductFactory;
+use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingError;
 use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingErrorAggregatorInterface;
 use Magento\Framework\Json\Helper\Data as JsonHelper;
 use Magento\ImportExport\Helper\Data as ImportExport;
@@ -22,12 +24,18 @@ class Eyelens extends AbstractEntity
     const ENTITY_CODE = 'eyelens';
     const ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING = 'requiredAttributeMissing';
     const ERROR_CODE_INCORRECT_CUSTOM_OPTIONS = 'incorrectCustomOptions';
+    const ERROR_CODE_INCORRECT_VALUE_DISCORDANCE = 'valueDiscordance';
 
     /**
      *
      * @var ProductRepositoryInterface
      */
     private $productRepository;
+
+    /**
+     * @var ProductFactory
+     */
+    private $productFactory;
 
     /**
      *
@@ -84,9 +92,11 @@ class Eyelens extends AbstractEntity
         ResourceConnection $resource,
         ResourceHelper $resourceHelper,
         ProcessingErrorAggregatorInterface $errorAggregator,
-        ProductRepositoryInterface $productRepository
+        ProductRepositoryInterface $productRepository,
+        ProductFactory $productFactory
     ) {
         $this->productReposirory = $productRepository;
+        $this->productFactory = $productFactory;
         $this->jsonHelper = $jsonHelper;
         $this->_importExportData = $importExportData;
         $this->_resourceHelper = $resourceHelper;
@@ -96,6 +106,7 @@ class Eyelens extends AbstractEntity
         $this->errorAggregator = $errorAggregator;
         $this->errorMessageTemplates[self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING] = 'Missing required value for field: %s.';
         $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS] = 'Custom Options are built incorrectly.';
+        $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE] = 'Can\'t megre products with sku of %s. Name or Price value differs from one product to another.';
 
         $this->initMessageTemplates();
     }
@@ -129,6 +140,10 @@ class Eyelens extends AbstractEntity
         $this->addMessageTemplate(
             self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS,
             __($this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS])
+        );
+        $this->addMessageTemplate(
+            self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE,
+            __($this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE])
         );
     }
 
@@ -216,20 +231,32 @@ class Eyelens extends AbstractEntity
     {
         $preliminaryImportData = array_values($this->_dataSourceModel->getNextBunch());
         $processedSkusArr = [];
+        $corruptedSkus = [];
         foreach ($preliminaryImportData as $num => $val) {
+            if (in_array($val['sku'], $corruptedSkus)) {
+                continue;
+            }
+
             if (!in_array($val['sku'], $processedSkusArr)) {
                 $this->finalImportData[] = $val;
                 $processedSkusArr[$val['sku']] = $num;
-            } else {
-                $this->mergeRecords($val, $processedSkusArr[$val['sku']]);
-
+            } else if (!$this->mergeRecords($val, $processedSkusArr[$val['sku']])) {
+                $this->addRowError(
+                    self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE,
+                    $processedSkusArr[$val['sku']],
+                    $val['sku']
+                );
             }
         }
-
     }
 
     private function mergeRecords($currentRecord, $mergeRecordNumber)
     {
+        if ($this->finalImportData[$mergeRecordNumber] === $currentRecord) {
+            $this->finalImportData[$mergeRecordNumber] = $currentRecord;
+
+            return true;
+        }
         if ($this->finalImportData[$mergeRecordNumber]['name'] != $currentRecord['name'] ||
             $this->finalImportData[$mergeRecordNumber]['price'] != $currentRecord['price']) {
 
@@ -240,7 +267,7 @@ class Eyelens extends AbstractEntity
             $this->finalImportData[$mergeRecordNumber]['custom_options'],
             $currentRecord['custom_options']
         );
-        $this->finalImportData[$mergeRecordNumber]['brand'] += $currentRecord['brand'];
+        $this->finalImportData[$mergeRecordNumber]['brand'] .= $currentRecord['brand'];
 
         return true;
     }
