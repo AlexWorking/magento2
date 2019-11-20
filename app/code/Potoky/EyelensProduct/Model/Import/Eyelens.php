@@ -191,7 +191,7 @@ class Eyelens extends AbstractEntity
             if (preg_match($pattern, $customOption)) {
                 $keyValue = explode(':', $customOption);
                 $key = $keyValue[0];
-                $value = ltrim($keyValue[1]);
+                $value = trim($keyValue[1]);
                 if (strpos($key, '*') === 0) {
                     $key = substr($key, 1);
                     $refinedOptions[$key]['isRequired'] = true;
@@ -247,6 +247,24 @@ class Eyelens extends AbstractEntity
 
     private function mergeCustomOptions($options1, $options2)
     {
+        $toggleKeyStringiness = function($key, $toString)
+        {
+            if ($toString === true) {
+                $key = '_' . $key;
+
+                return $key;
+            }
+
+            if ($toString === false) {
+                $key = substr($key, 1);
+
+                return $key;
+            }
+
+            return false;
+        };
+
+        $this->stringifyOptionKeys(true, $toggleKeyStringiness,$options1, $options2);
         $mergeArray = array_merge_recursive(
             $options1,
             $options2
@@ -258,8 +276,21 @@ class Eyelens extends AbstractEntity
         }
 
         unset($finalOption);
+        $this->stringifyOptionKeys(false, $toggleKeyStringiness, $mergeArray);
 
         return $mergeArray;
+    }
+
+    private function stringifyOptionKeys($toString, $callback, &...$mergingOptionsMultiple)
+    {
+        foreach ($mergingOptionsMultiple as &$mergingOptionsSingle) {
+            foreach ($mergingOptionsSingle as $key => $value) {
+                unset($mergingOptionsSingle[$key]);
+                $key = $callback($key, $toString);
+                $mergingOptionsSingle[$key] = $value;
+            }
+        }
+        unset($mergingOptionsSingle);
     }
 
     protected function _prepareRowForDb(array $rowData)
@@ -283,7 +314,6 @@ class Eyelens extends AbstractEntity
      */
     protected function _importData(): bool
     {
-        $bunch = $this->_dataSourceModel->getNextBunch();
         $this->compressPreliminaryImportData();
 
         return true;
