@@ -20,8 +20,7 @@ use Magento\Framework\Stdlib\StringUtils;
 use Exception;
 use Magento\ImportExport\Model\Import;
 use Magento\Framework\DB\Adapter\AdapterInterface;
-use Magento\Theme\Model\Theme;
-
+use Magento\Catalog\Model\Product\OptionFactory;
 class Eyelens extends AbstractEntity
 {
     const ENTITY_CODE = 'eyelens';
@@ -46,6 +45,12 @@ class Eyelens extends AbstractEntity
      * @var SearchCriteriaBuilder
      */
     private $searchCriteriaBuilder;
+
+    /**
+     *
+     * @var Option
+     */
+    private $productOptionFactory;
 
     /**
      *
@@ -104,7 +109,8 @@ class Eyelens extends AbstractEntity
         ProcessingErrorAggregatorInterface $errorAggregator,
         ProductRepositoryInterface $productRepository,
         ProductFactory $productFactory,
-        SearchCriteriaBuilder $searchCriteriaBuilder
+        SearchCriteriaBuilder $searchCriteriaBuilder,
+        OptionFactory $optionFactory
     ) {
         $this->productRepository = $productRepository;
         $this->productFactory = $productFactory;
@@ -116,6 +122,8 @@ class Eyelens extends AbstractEntity
         $this->resource = $resource;
         $this->connection = $resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $this->errorAggregator = $errorAggregator;
+        $this->productOptionFactory = $optionFactory;
+
         $this->errorMessageTemplates[self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING] = 'Missing required value for field: %s.';
         $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS] = 'Custom Options are built incorrectly.';
         $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE] = 'Can\'t megre products with sku of %s. Name or Price value differs from one product to another.';
@@ -225,6 +233,7 @@ class Eyelens extends AbstractEntity
                 } else {
                     $refinedOptions[$key]['isRequired'] = false;
                 }
+                $refinedOptions[$key]['title'] = $key;
                 $refinedOptions[$key]['values'][] = $value;
             } else {
                 $this->addRowError(
@@ -258,6 +267,7 @@ class Eyelens extends AbstractEntity
                     $processedSkusArr[$val['sku']],
                     $val['sku']
                 );
+                unset($processedSkusArr[$val['sku']]);
                 $corruptedSkusArr[] = $val['sku'];
             }
         }
@@ -311,7 +321,14 @@ class Eyelens extends AbstractEntity
         );
 
         foreach ($mergeArray as &$finalOption) {
-            $finalOption['isRequired'] = (bool) ($finalOption['isRequired'][0] + $finalOption['isRequired'][1]);
+            if (is_array($finalOption['title'])) {
+                $finalOption['isRequired'] = (bool) ($finalOption['isRequired'][0] + $finalOption['isRequired'][1]);
+            }
+
+            if (is_array($finalOption['title'])) {
+                $finalOption['title'] = $finalOption['title'][0];
+            }
+
             $finalOption['values'] = array_unique($finalOption['values']);
         }
 
@@ -347,18 +364,45 @@ class Eyelens extends AbstractEntity
 
     private function buildOptionArray($sku)
     {
-        $optionsBefore = $this->finalImportData[$sku];
+        $optionsBefore = $this->finalImportData[$sku]['custom_options'];
         $optionsAfter = [];
+        rewind($optionsBefore);
         foreach ($optionsBefore as $option) {
+            $valuesArr = [];
+            foreach ($option['values'] as $val) {
+                $valuesArr[] = [
+                    'title' => $val,
+                    'price' => '0',
+                    //'price_type' => 'fixed',
+                    //'sku' => 'A',
+                    //'sort_order' => '0',
+                    //'is_delete' => '0'
+                ];
+            }
             $optionsAfter[] = [
-                [
-                    'title' => $option,
-                    'price_type' => 'fixed',
-                    'price' => '5',
+                    //'sort_order' => '1',
+                    'title' => $option['title'],
+                    //'price_type' => 'fixed',
+                    //'price' => '',
                     'type' => 'drop_down',
-                    'is_require' => '0',
-                ]
+                    'is_require' => $option['isRequired'],
+                    'values' => $valuesArr
             ];
+        }
+
+        return $optionsAfter;
+    }
+
+    private function assignCustomOptionsToProduct($product, $sku)
+    {
+        $options = $this->buildOptionArray($sku);
+        foreach ($options as $optionArray) {
+            $option = $this->productOptionFactory->create();
+            $option->setProductId($product->getId())
+                ->setStoreId($product->getStoreId())
+                ->addData($optionArray);
+            $option->save();
+            $product->addOption($option);
         }
     }
 
@@ -372,18 +416,33 @@ class Eyelens extends AbstractEntity
     protected function _importData(): bool
     {
         $this->compressPreliminaryImportData();
-
-        $processedSkus = [];
+        $toProcessSkus = array_keys($this->finalImportData);
         /** @var SearchCriteriaInterface $searchCriteria */
-        $searchCriteria = $this->searchCriteriaBuilder->addFilter('sku', ['Simp2', 'Simp24'], 'in')->create();
-        $products = $this->productRepository->getList($searchCriteria)->getItems();
-        foreach ($products as $product) {
+        $searchCriteria = $this->searchCriteriaBuilder->addFilter('sku', implode($toProcessSkus), 'in')->create();
+        $repoProducts = $this->productRepository->getList($searchCriteria)->getItems();
+        foreach ($repoProducts as $product) {
             $sku = $product->getSku();
-            $options = $this->buildOptionArray($sku);
-
-
-            $processedSkus[] = $sku;
+            $product->setName($this->finalImportData[$sku]['name']);
+            $product->setPrice($this->finalImportData[$sku]['price']);
+            $this->assignCustomOptionsToProduct($product, $sku);
+            $toProcessSkus = array_diff($toProcessSkus, [$sku]);
+            //$this->productRepository->save($product);
         }
+
+        foreach ($toProcessSkus as $toProcessSku) {
+            $product= $this->productFactory->create();
+            $product->setTypeId('simple');
+            $product->setSku($toProcessSku);
+            $product->setName($this->finalImportData[$toProcessSku]['name']);
+            $product->setPrice($this->finalImportData[$toProcessSku]['price']);
+            $product->setAttributeSetId(4);
+            $product->setWebsiteIds([1]);
+            $product->save();
+            $this->assignCustomOptionsToProduct($product, $toProcessSku);
+            //$product = $this->productRepository->getById($product->getId());
+            //$this->productRepository->save($product);
+        }
+
         return true;
     }
 }
