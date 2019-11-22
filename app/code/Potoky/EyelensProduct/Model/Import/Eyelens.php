@@ -50,12 +50,6 @@ class Eyelens extends AbstractEntity
 
     /**
      *
-     * @var State
-     */
-    private $appState;
-
-    /**
-     *
      * @var StoreManagerInterface
      */
     private $storeManager;
@@ -131,7 +125,6 @@ class Eyelens extends AbstractEntity
         ProductFactory $productFactory,
         SearchCriteriaBuilder $searchCriteriaBuilder,
         OptionFactory $optionFactory,
-        State $appState,
         StoreManagerInterface $storeManager,
         Config $eavConfig
     ) {
@@ -146,7 +139,6 @@ class Eyelens extends AbstractEntity
         $this->connection = $resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $this->errorAggregator = $errorAggregator;
         $this->productOptionFactory = $optionFactory;
-        $this->appState = $appState;
         $this->storeManager = $storeManager;
         $this->eavConfig = $eavConfig;
 
@@ -483,6 +475,7 @@ class Eyelens extends AbstractEntity
             if ($brandId) {
                 $product->setCustomAttribute('manufacturer', $brandId);
             }
+
             $this->assignCustomOptionsToProduct($product, $sku, true);
             $toProcessSkus = array_diff($toProcessSkus, [$sku]);
             $this->productRepository->save($product);
