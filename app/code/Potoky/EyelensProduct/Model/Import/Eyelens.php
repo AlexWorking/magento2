@@ -21,7 +21,8 @@ use Exception;
 use Magento\ImportExport\Model\Import;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Catalog\Model\Product\OptionFactory;
-use \Magento\Framework\App\State;
+use Magento\Framework\App\State;
+use Magento\Store\Model\StoreManagerInterface;
 class Eyelens extends AbstractEntity
 {
     const ENTITY_CODE = 'eyelens';
@@ -55,7 +56,19 @@ class Eyelens extends AbstractEntity
 
     /**
      *
-     * @var Option
+     * @var StoreManagerInterface
+     */
+    private $storeManager;
+
+    /**
+     *
+     * @var Config
+     */
+    private $eavConfig;
+
+    /**
+     *
+     * @var OptionFactory
      */
     private $productOptionFactory;
 
@@ -118,7 +131,9 @@ class Eyelens extends AbstractEntity
         ProductFactory $productFactory,
         SearchCriteriaBuilder $searchCriteriaBuilder,
         OptionFactory $optionFactory,
-        State $appState
+        State $appState,
+        StoreManagerInterface $storeManager,
+        Config $eavConfig
     ) {
         $this->productRepository = $productRepository;
         $this->productFactory = $productFactory;
@@ -132,12 +147,15 @@ class Eyelens extends AbstractEntity
         $this->errorAggregator = $errorAggregator;
         $this->productOptionFactory = $optionFactory;
         $this->appState = $appState;
+        $this->storeManager = $storeManager;
+        $this->eavConfig = $eavConfig;
 
         $this->errorMessageTemplates[self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING] = 'Missing required value for field: %s.';
         $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_CUSTOM_OPTIONS] = 'Custom Options are built incorrectly.';
         $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE] = 'Can\'t megre products with sku of %s. Name, Price or Brand values differ from one product to another.';
 
         $this->initMessageTemplates();
+
     }
 
     /**
@@ -261,25 +279,26 @@ class Eyelens extends AbstractEntity
     {
         $preliminaryImportData = array_values($this->_dataSourceModel->getNextBunch());
         $processedSkusArr = [];
-        $corruptedSkusArr = [];
+        $corruptedSkus = [];
         foreach ($preliminaryImportData as $num => $val) {
-            if (in_array($val['sku'], $corruptedSkusArr)) {
+            if (in_array($val['sku'], $corruptedSkus)) {
                 continue;
             }
 
-            if (!in_array($val['sku'], $processedSkusArr)) {
+            if (!array_key_exists($val['sku'], $processedSkusArr)) {
                 $this->finalImportData[$val['sku']] = $val;
-                $processedSkusArr[] = $val['sku'];
+                $processedSkusArr[$val['sku']] = $num;
             } else if (!$this->mergeRecords($val, $val['sku'])) {
                 $this->addRowError(
                     self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE,
                     $processedSkusArr[$val['sku']],
                     $val['sku']
                 );
-                unset($processedSkusArr[$val['sku']]);
-                $corruptedSkusArr[] = $val['sku'];
+                $corruptedSkus[] = $val['sku'];
+                unset($this->finalImportData[$val['sku']]);
             }
         }
+
     }
 
     private function mergeRecords($currentRecord, $meringSku)
@@ -452,13 +471,21 @@ class Eyelens extends AbstractEntity
             $product->setName($this->finalImportData[$sku]['name']);
             $product->setPrice($this->finalImportData[$sku]['price']);
             //$product->setCustomAttribute('color', 4);
+            $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
+            $options = $brandAttribute->getSource()->getAllOptions();
+            $brandId = null;
+            foreach ($options as $option) {
+                if ($option['label'] == $this->finalImportData[$sku]['brand']) {
+                    $brandId = $option['value'];
+                    break;
+                }
+            }
+            if ($brandId) {
+                $product->setCustomAttribute('manufacturer', $brandId);
+            }
             $this->assignCustomOptionsToProduct($product, $sku, true);
             $toProcessSkus = array_diff($toProcessSkus, [$sku]);
-            $saveCallBack = function ($repo, $prod) {
-                $repo->save($prod);
-            };
-
-            $this->appState->emulateAreaCode('adminhtml', $saveCallBack, [$this->productRepository, $product]);
+            $this->productRepository->save($product);
         }
 
         foreach ($toProcessSkus as $toProcessSku) {
@@ -468,11 +495,33 @@ class Eyelens extends AbstractEntity
             $product->setName($this->finalImportData[$toProcessSku]['name']);
             $product->setPrice($this->finalImportData[$toProcessSku]['price']);
             $product->setAttributeSetId(4);
-            //$product->addData(['manufacturer', $this->finalImportData[$toProcessSku]['brand']]);
             $product->setStatus(0);
             $product->setWeight(1);
             $product->setVisibility(1);
-            $product->setWebsiteIds([1]);
+
+
+            $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
+            $options = $brandAttribute->getSource()->getAllOptions();
+            $brandId = null;
+            foreach ($options as $option) {
+                if ($option['label'] == $this->finalImportData[$toProcessSku]['brand']) {
+                    $brandId = $option['value'];
+                    break;
+                }
+            }
+            if ($brandId) {
+                $product->setCustomAttribute('manufacturer', $brandId);
+            }
+
+            //$defaultWebsiteId = $this->storeManager->getDefaultStoreView()->getWebsiteId();
+            $product->setStoreId(1);
+
+            $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
+            $brandId = $brandAttribute->getSource()->getOptionId($this->finalImportData[$toProcessSku]['brand']);
+            if ($brandId) {
+                $product->setCustomAttribute('manufacturer', $brandId);
+            }
+
             $product->save();
             $this->assignCustomOptionsToProduct($product, $toProcessSku);
         }
