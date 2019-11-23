@@ -8,7 +8,6 @@ use Magento\Catalog\Model\ProductFactory;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Eav\Model\Config;
-use Magento\Catalog\Model\Product\OptionFactory;
 use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingErrorAggregatorInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\ImportExport\Model\ResourceModel\Helper as ResourceHelper;
@@ -86,12 +85,6 @@ class Eyelens extends AbstractEntity
 
     /**
      *
-     * @var OptionFactory
-     */
-    private $productOptionFactory;
-
-    /**
-     *
      */
     private $preparedCustomOptionsInfo = [];
 
@@ -108,7 +101,6 @@ class Eyelens extends AbstractEntity
      * @param ProductFactory
      * @param SearchCriteriaBuilder
      * @param Config $config
-     * @param OptionFactory $optionFactory
      *
      */
     public function __construct(
@@ -118,7 +110,6 @@ class Eyelens extends AbstractEntity
         SearchCriteriaBuilder $searchCriteriaBuilder,
         StoreManagerInterface $storeManager,
         Config $eavConfig,
-        OptionFactory $optionFactory,
         ProcessingErrorAggregatorInterface $errorAggregator,
         ResourceConnection $resource,
         ResourceHelper $resourceHelper,
@@ -132,7 +123,6 @@ class Eyelens extends AbstractEntity
         $this->searchCriteriaBuilder = $searchCriteriaBuilder;
         $this->storeManager = $storeManager;
         $this->eavConfig = $eavConfig;
-        $this->productOptionFactory = $optionFactory;
         $this->errorAggregator = $errorAggregator;
         $this->resource = $resource;
         $this->_resourceHelper = $resourceHelper;
@@ -198,6 +188,7 @@ class Eyelens extends AbstractEntity
      * Import data rows.
      *
      * @return boolean
+     * @throws \Exception
      */
     protected function _importData(): bool
     {
@@ -224,7 +215,11 @@ class Eyelens extends AbstractEntity
                 $product->setCustomAttribute('manufacturer', $brandId);
             }
 
-            $this->assignCustomOptionsToProduct($product, $sku, true);
+            $this->moduleHelper->assignCustomOptionsToProduct(
+                $product,
+                $this->finalImportData[$sku]['custom_options'],
+                true
+            );
             $toProcessSkus = array_diff($toProcessSkus, [$sku]);
             $this->productRepository->save($product);
         }
@@ -264,7 +259,10 @@ class Eyelens extends AbstractEntity
             }
 
             $product->save();
-            $this->assignCustomOptionsToProduct($product, $toProcessSku);
+            $this->moduleHelper->assignCustomOptionsToProduct(
+                $product,
+                $this->finalImportData[$toProcessSku]['custom_options']
+            );
         }
 
         return true;
@@ -510,72 +508,5 @@ class Eyelens extends AbstractEntity
             }
         }
         unset($mergingOptionsSingle);
-    }
-
-    /**
-     * based on prepared Custom Options data
-     * build an array acceptable for
-     * creating and storing Custom Options as
-     * Product Custom Options in core tables
-     *
-     * @param $sku
-     * @return array
-     */
-    private function buildOptionArray($sku)
-    {
-        $optionsBefore = $this->finalImportData[$sku]['custom_options'];
-        $optionsAfter = [];
-        $sortOrderCounter = 0;
-        foreach ($optionsBefore as $option) {
-            $valuesArr = [];
-            foreach ($option['values'] as $val) {
-                $valuesArr[] = [
-                    'title' => $val,
-                    'price' => '0',
-                    //'price_type' => 'fixed',
-                    //'sku' => 'A',
-                    'sort_order' => $sortOrderCounter,
-                    //'is_delete' => '0'
-                ];
-                $sortOrderCounter++;
-            }
-            $optionsAfter[] = [
-                    'sort_order' => $sortOrderCounter,
-                    'title' => $option['title'],
-                    //'price_type' => 'fixed',
-                    //'price' => '',
-                    'type' => 'drop_down',
-                    'is_require' => $option['isRequired'],
-                    'values' => $valuesArr
-            ];
-            $sortOrderCounter++;
-        }
-
-        return $optionsAfter;
-    }
-
-    /**
-     * bind Custom Options with the Product.
-     *
-     * @param $product
-     * @param $sku
-     * @param bool $unsetBefore
-     *
-     * @throws \Exception
-     */
-    private function assignCustomOptionsToProduct($product, $sku, $unsetBefore = false)
-    {
-        $options = $this->buildOptionArray($sku);
-        if ($unsetBefore === true) {
-            $product->unsetData('options');
-        }
-        foreach ($options as $optionArray) {
-            $option = $this->productOptionFactory->create();
-            $option->setProductId($product->getId())
-                ->setStoreId($product->getStoreId())
-                ->addData($optionArray);
-            $option->save();
-            $product->addOption($option);
-        }
     }
 }

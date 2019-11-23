@@ -438,14 +438,22 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     public function beforeSave($product)
     {
         $product->unsetData($this->_keyTwicedProducts);
-        $validationResult = $this->moduleHelper->validateLink($product);
-        if ($validationResult ===  false) {
+        $twicedProductId = $this->moduleHelper->getTwicedProduct($product);
+
+        if ($twicedProductId === null) {
+            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
+        } elseif ($twicedProductId ===  false) {
             throw new \Exception("The number of linked products or link types exceed one.");
+        } else {
+            $twicedProduct = $this->productRepository->getById($twicedProductId);
+            $product->setOptions($twicedProduct->getOptios());
         }
 
-        if ($validationResult === 0) {
-            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
-        }
+
+
+
+
+
 
         return parent::beforeSave($product);
     }
