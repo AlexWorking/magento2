@@ -4,7 +4,9 @@
 namespace Potoky\EyelensProduct\Model\Product\Type;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\Product\Exception;
 use Magento\Catalog\Model\ProductFactory;
+use Potoky\EyelensProduct\Helper\Data as ModuleHelper;
 
 class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 {
@@ -83,6 +85,12 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     protected $msrpData;
 
     /**
+     *
+     * @var ModuleHelper
+     */
+    private $moduleHelper;
+
+    /**
      * @param ProductFactory
      * @param \Magento\Catalog\Model\Product\Option $catalogProductOption
      * @param \Magento\Eav\Model\Config $eavConfig
@@ -99,9 +107,11 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      * @param \Magento\Framework\App\State $appState
      * @param \Magento\Msrp\Helper\Data $msrpData
      * @param \Magento\Framework\Serialize\Serializer\Json|null $serializer
+     * @param ModuleHelper $moduleHelper;
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
+        ModuleHelper $moduleHelper,
         ProductFactory $productFactory,
         \Magento\Catalog\Model\Product\Option $catalogProductOption,
         \Magento\Eav\Model\Config $eavConfig,
@@ -119,6 +129,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
         \Magento\Msrp\Helper\Data $msrpData,
         \Magento\Framework\Serialize\Serializer\Json $serializer = null
     ) {
+        $this->moduleHelper =$moduleHelper;
         $this->productFactory =$productFactory;
         $this->productLinks = $catalogProductLink;
         $this->_storeManager = $storeManager;
@@ -422,15 +433,20 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 
     /**
      * @inheritdoc
+     * @throws \Exception
      */
     public function beforeSave($product)
     {
-        //clear cached associated links
         $product->unsetData($this->_keyTwicedProducts);
-        if ($product->hasData('product_options') && !empty($product->getData('product_options'))) {
-            //phpcs:ignore Magento2.Exceptions.DirectThrow
-            throw new \Exception('Custom options for eyelens product type are not supported');
+        $validationResult = $this->moduleHelper->validateLink($product);
+        if ($validationResult ===  false) {
+            throw new \Exception("The number of linked products or link types exceed one.");
         }
+
+        if ($validationResult === 0) {
+            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
+        }
+
         return parent::beforeSave($product);
     }
 
