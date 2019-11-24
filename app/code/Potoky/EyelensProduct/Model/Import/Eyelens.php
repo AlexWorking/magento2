@@ -258,8 +258,7 @@ class Eyelens extends AbstractEntity
             $product->save();
             $this->moduleHelper->assignCustomOptionsToProduct(
                 $product,
-                $this->finalImportData[$toProcessSku]['custom_options'],
-                false
+                $this->finalImportData[$toProcessSku]['custom_options']
             );
         }
 

@@ -6,6 +6,7 @@ namespace Potoky\EyelensProduct\Helper;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Catalog\Model\Product\OptionFactory;
+use Magento\Framework\App\ResourceConnection;
 
 class Data extends AbstractHelper
 {
@@ -16,14 +17,31 @@ class Data extends AbstractHelper
     private $productOptionFactory;
 
     /**
+     *
+     * @var ResourceConnection;
+     */
+    private $resource;
+
+    /**
      * Data constructor.
      * @param Context $context
      * @param OptionFactory $optionFactory
+     * @param ResourceConnection $recource
      */
-    public function __construct(Context $context,  OptionFactory $optionFactory)
+    public function __construct(Context $context,  OptionFactory $optionFactory, ResourceConnection $resource)
     {
         parent::__construct($context);
         $this->productOptionFactory = $optionFactory;
+        $this->resource = $resource;
+    }
+
+    /**
+     * public getter for the resource
+     *
+     */
+    public function getResource()
+    {
+        return $this->resource;
     }
 
     /**
@@ -31,9 +49,10 @@ class Data extends AbstractHelper
      * necessary validations.
      *
      * @param $product
-     * @return boolean|null|int
+     * @return null|int
+     * @throws \Exception
      */
-    public function getTwicedProduct($product)
+    public function getTwicedProductIdFromPost($product)
     {
         $post = $this->_getRequest()->getPost();
 
@@ -46,7 +65,17 @@ class Data extends AbstractHelper
 
         if (!isset($links['twiced']) || count($links) > 1 || count($links['twiced']) > 1) {
 
-            return false;
+            throw new \Exception("The number of linked products or link types exceed one.");
+        }
+
+        $associatedProduct = $product->getInstanceType()->getAssociatedProducts()[0];
+
+        if ($associatedProduct-getId() != $links['twiced'][0]['id']) {
+
+            throw new \Exception(sprintf(
+                "There is already a currently disabled Twiced Product with sku of %s being linked to this Product",
+                $links['twiced'][0]['sku']
+            ));
         }
 
         return $links['twiced'][0]['id'];
@@ -62,13 +91,10 @@ class Data extends AbstractHelper
      *
      * @throws \Exception
      */
-    public function assignCustomOptionsToProduct($product, $options, $unsetBefore = true)
+    public function assignCustomOptionsToProduct($product, $options)
     {
+        $product->unsetData('options');
         $options = $this->buildOptionArray($options);
-
-        if ($unsetBefore === true) {
-            $product->unsetData('options');
-        }
 
         foreach ($options as $optionArray) {
             $option = $this->productOptionFactory->create();

@@ -432,36 +432,39 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     //phpcs:enable
 
     /**
-     * @inheritdoc
+     * Make changes to current Eyelens Product considering
+     * parameters of the Twiced Product being linked to it at now
+     *
      * @throws \Exception
      */
     public function beforeSave($product)
     {
         $product->unsetData($this->_keyTwicedProducts);
-        $twicedProductId = $this->moduleHelper->getTwicedProduct($product);
 
-        if ($twicedProductId === null) {
-            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
-        } elseif ($twicedProductId ===  false) {
-            throw new \Exception("The number of linked products or link types exceed one.");
-        } else {
-            $twicedProduct = $this->productRepository->getById($twicedProductId);
-            $customOptions = $twicedProduct->getData('options');
-            /*foreach ($customOptions as &$customOption) {
-                $customOption = $customOption->getData();
-            }
-            unset($customOption);*/
-            $this->moduleHelper->assignCustomOptionsToProduct($product, $customOptions);
+        try {
+            $twicedProductId = $this->moduleHelper->getTwicedProductIdFromPost($product);
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
 
-        //customOptions_ARR=>0_OBJ->data_ARR=>type = "drop-down"
-        //customOptions_ARR=>0_OBJ->values_ARR=>707_OBJ->data_ARR=>title = -7
+        if (!$twicedProductId) {
+            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
+        } else {
+            $twicedProduct = $this->productRepository->getById($twicedProductId);
+        }
 
+        $customOptions = $twicedProduct->getData('options');
 
+        if ($customOptions) {
+            $this->moduleHelper->assignCustomOptionsToProduct($product, $customOptions);
+            $product->setHasOptions(true);
+        } else {
+            $product->unsetData('options');
+            $product->setHasOptions(false);
+        }
 
-
-
-
+        $twicedStockStatus = $twicedProduct->getQuantityAndStockStatus()['is_in_stock'];
+        $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => $twicedStockStatus]);
 
         return parent::beforeSave($product);
     }
