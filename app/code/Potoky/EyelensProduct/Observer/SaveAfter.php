@@ -27,11 +27,47 @@ class SaveAfter implements ObserverInterface
      *
      * @param Observer $observer
      * @return $this|void
+     *
+     * @throws \Exception
      */
     public function execute(Observer $observer)
     {
         $product = $observer->getData('product');
-        $connection = $this->moduleHelper->getResource()->getConnection();
+
+        switch ($product->getTypeId()) {
+            case 'eyelens':
+                if ($this->moduleHelper->getCustomOptions()) {
+                    $this->moduleHelper->assignCustomOptionsToProduct(
+                        $product,
+                        $this->moduleHelper->getCustomOptions()
+                    );
+                    $product->setHasOptions(true);
+                } else {
+                    $product->unsetData('options');
+                    $product->setHasOptions(false);
+                }
+                break;
+
+            case 'simple':
+                if ($product->getStatus() == 0 || $product->getQuantityAndStockStatus()['is_in_stock'] == 0) {
+                    $connection = $this->moduleHelper->getResource()->getConnection();
+                    $select = $connection->select()
+                        ->from(
+                            ['l' => 'catalog_product_link'],
+                            ['product_id']
+                        )->where(
+                            "l.linked_product_id=?",
+                            $product->getId()
+                        );
+                    $rows = $connection->fetchAll($select);
+                    foreach ($rows as $row) {
+                        $eyelens = $this->moduleHelper->getProductRepository()->getById($row['product_id']);
+                        $eyelens->setStatus(0);
+                        $this->moduleHelper->getProductRepository()->save($eyelens);
+                    }
+                }
+                break;
+        }
 
         return $this;
     }

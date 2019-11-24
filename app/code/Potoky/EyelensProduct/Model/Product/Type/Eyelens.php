@@ -447,24 +447,19 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
             throw new \Exception($e->getMessage());
         }
 
+        $twicedProduct = null;
+
         if (!$twicedProductId) {
             $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
         } else {
             $twicedProduct = $this->productRepository->getById($twicedProductId);
         }
 
-        $customOptions = $twicedProduct->getData('options');
-
-        if ($customOptions) {
-            $this->moduleHelper->assignCustomOptionsToProduct($product, $customOptions);
-            $product->setHasOptions(true);
-        } else {
-            $product->unsetData('options');
-            $product->setHasOptions(false);
+        if ($twicedProduct) {
+            $twicedStockStatus = $twicedProduct->getQuantityAndStockStatus()['is_in_stock'];
+            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => $twicedStockStatus]);
+            $this->moduleHelper->setCustomOptions($twicedProduct->getData('options'));
         }
-
-        $twicedStockStatus = $twicedProduct->getQuantityAndStockStatus()['is_in_stock'];
-        $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => $twicedStockStatus]);
 
         return parent::beforeSave($product);
     }

@@ -7,6 +7,7 @@ use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Catalog\Model\Product\OptionFactory;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Catalog\Api\ProductRepositoryInterface;
 
 class Data extends AbstractHelper
 {
@@ -23,25 +24,74 @@ class Data extends AbstractHelper
     private $resource;
 
     /**
+     *
+     * @var ProductRepositoryInterface
+     */
+    private $productRepository;
+
+    /**
+     * Custom options to be assigned to Eyelens Product
+     *
+     * @var null
+     */
+    private $customOptions = null;
+
+    /**
      * Data constructor.
      * @param Context $context
      * @param OptionFactory $optionFactory
      * @param ResourceConnection $recource
+     * @param ProductRepositoryInterface $productRepository
      */
-    public function __construct(Context $context,  OptionFactory $optionFactory, ResourceConnection $resource)
-    {
+    public function __construct(
+        Context $context,
+        OptionFactory $optionFactory,
+        ResourceConnection $resource,
+        ProductRepositoryInterface $productRepository
+    ) {
         parent::__construct($context);
         $this->productOptionFactory = $optionFactory;
         $this->resource = $resource;
+        $this->productRepository = $productRepository;
     }
 
     /**
-     * public getter for the resource
+     * getter for the resource
      *
+     * @return ResourceConnection
      */
     public function getResource()
     {
         return $this->resource;
+    }
+
+    /**
+     * getter for product repository
+     *
+     */
+    public function getProductRepository()
+    {
+        return $this->productRepository;
+    }
+
+    /**
+     * getter for custom options
+     *
+     * @return array
+     */
+    public function getCustomOptions()
+    {
+        return $this->customOptions;
+    }
+
+    /**
+     * Public setter for customoptions
+     *
+     * @return void
+     */
+    public function setCustomOptions($customOptions)
+    {
+       $this->customOptions = $customOptions;
     }
 
     /**
@@ -68,9 +118,9 @@ class Data extends AbstractHelper
             throw new \Exception("The number of linked products or link types exceed one.");
         }
 
-        $associatedProduct = $product->getInstanceType()->getAssociatedProducts()[0];
+        $associatedProduct = ($product->getTypeInstance()->getAssociatedProducts($product)[0]) ?? null;
 
-        if ($associatedProduct-getId() != $links['twiced'][0]['id']) {
+        if ($associatedProduct && $associatedProduct->getId() != $links['twiced'][0]['id']) {
 
             throw new \Exception(sprintf(
                 "There is already a currently disabled Twiced Product with sku of %s being linked to this Product",
