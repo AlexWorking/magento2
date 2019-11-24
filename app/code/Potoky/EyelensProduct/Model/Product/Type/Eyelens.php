@@ -446,8 +446,16 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
             throw new \Exception("The number of linked products or link types exceed one.");
         } else {
             $twicedProduct = $this->productRepository->getById($twicedProductId);
-            $product->setOptions($twicedProduct->getOptios());
+            $customOptions = $twicedProduct->getData('options');
+            /*foreach ($customOptions as &$customOption) {
+                $customOption = $customOption->getData();
+            }
+            unset($customOption);*/
+            $this->moduleHelper->assignCustomOptionsToProduct($product, $customOptions);
         }
+
+        //customOptions_ARR=>0_OBJ->data_ARR=>type = "drop-down"
+        //customOptions_ARR=>0_OBJ->values_ARR=>707_OBJ->data_ARR=>title = -7
 
 
 

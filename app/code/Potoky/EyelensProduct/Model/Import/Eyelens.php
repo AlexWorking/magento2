@@ -136,7 +136,6 @@ class Eyelens extends AbstractEntity
         $this->errorMessageTemplates[self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE] = 'Can\'t megre products with sku of %s. Name, Price or Brand values differ from one product to another.';
 
         $this->initMessageTemplates();
-
     }
 
     /**
@@ -217,8 +216,7 @@ class Eyelens extends AbstractEntity
 
             $this->moduleHelper->assignCustomOptionsToProduct(
                 $product,
-                $this->finalImportData[$sku]['custom_options'],
-                true
+                $this->finalImportData[$sku]['custom_options']
             );
             $toProcessSkus = array_diff($toProcessSkus, [$sku]);
             $this->productRepository->save($product);
@@ -234,7 +232,6 @@ class Eyelens extends AbstractEntity
             $product->setStatus(0);
             $product->setWeight(1);
             $product->setVisibility(1);
-
 
             $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
             $options = $brandAttribute->getSource()->getAllOptions();
@@ -261,7 +258,8 @@ class Eyelens extends AbstractEntity
             $product->save();
             $this->moduleHelper->assignCustomOptionsToProduct(
                 $product,
-                $this->finalImportData[$toProcessSku]['custom_options']
+                $this->finalImportData[$toProcessSku]['custom_options'],
+                false
             );
         }
 
@@ -269,7 +267,7 @@ class Eyelens extends AbstractEntity
     }
 
     /**
-     * Change row data before saving in DB table.
+     * change row data before saving in DB table
      *
      * @param array $rowData
      * @return array

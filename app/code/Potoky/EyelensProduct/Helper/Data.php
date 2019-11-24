@@ -31,7 +31,7 @@ class Data extends AbstractHelper
      * necessary validations.
      *
      * @param $product
-     * @return bool|null|int
+     * @return boolean|null|int
      */
     public function getTwicedProduct($product)
     {
@@ -57,16 +57,19 @@ class Data extends AbstractHelper
      *
      * @param $product
      * @param array $options
-     * @param bool $unsetBefore
+     * @param boolean $areAlreadyBuild
+     * @param boolean $unsetBefore
      *
      * @throws \Exception
      */
-    public function assignCustomOptionsToProduct($product, $options, $unsetBefore = false)
+    public function assignCustomOptionsToProduct($product, $options, $unsetBefore = true)
     {
         $options = $this->buildOptionArray($options);
+
         if ($unsetBefore === true) {
             $product->unsetData('options');
         }
+
         foreach ($options as $optionArray) {
             $option = $this->productOptionFactory->create();
             $option->setProductId($product->getId())
@@ -88,14 +91,15 @@ class Data extends AbstractHelper
      */
     private function buildOptionArray($optionsBefore)
     {
-        //$optionsBefore = $this->finalImportData[$sku]['custom_options'];
         $optionsAfter = [];
         $sortOrderCounter = 0;
         foreach ($optionsBefore as $option) {
+            $isObject = gettype($option) === 'object';
             $valuesArr = [];
-            foreach ($option['values'] as $val) {
+            $values = ($isObject) ? $option->getValues() : $option['values'];
+            foreach ($values as $val) {
                 $valuesArr[] = [
-                    'title' => $val,
+                    'title' => ($isObject) ? $val->getData('title') : $val,
                     'price' => '0',
                     //'price_type' => 'fixed',
                     //'sku' => 'A',
@@ -106,11 +110,11 @@ class Data extends AbstractHelper
             }
             $optionsAfter[] = [
                 'sort_order' => $sortOrderCounter,
-                'title' => $option['title'],
+                'title' => ($isObject) ? $option->getData('title') : $option['title'],
                 //'price_type' => 'fixed',
                 //'price' => '',
-                'type' => 'drop_down',
-                'is_require' => $option['isRequired'],
+                'type' => ($isObject) ? $option->getData('type') : 'drop_down',
+                'is_require' => ($isObject) ? $option->getData('is_require') : $option['isRequired'],
                 'values' => $valuesArr
             ];
             $sortOrderCounter++;
