@@ -359,6 +359,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     protected function _prepareProduct(\Magento\Framework\DataObject $buyRequest, $product, $processMode)
     {
         $associatedId = $this->getAssociatedProductIds($product)[0];
+        $options = $product->getOptions();
         $firstLens = $this->productFactory->create()->loadByAttribute('entity_id', $associatedId);
 
         if (!$firstLens->getId()) {
@@ -376,6 +377,9 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 
         return [$firstLens, $secondLens];
     }
+
+    //options_ARR=>0_OBJ->values_ARR=>1150_OBJ->data_ARR title => -7 | option_type_id => 1150
+    //options_ARR=>0_OBJ->data_ARR title => "Power - Sph" option_id => 505
 
     /**
      * Retrieve products divided into groups required to purchase
@@ -450,15 +454,23 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
         $twicedProduct = null;
 
         if (!$twicedProductId) {
-            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
+            $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => 0]);
         } else {
             $twicedProduct = $this->productRepository->getById($twicedProductId);
         }
 
         if ($twicedProduct) {
-            $twicedStockStatus = $twicedProduct->getQuantityAndStockStatus()['is_in_stock'];
-            $product->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => $twicedStockStatus]);
-            $this->moduleHelper->setCustomOptions($twicedProduct->getData('options'));
+            $twicedStockStatus = $this->moduleHelper->stockStatus($twicedProduct);
+            $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => $twicedStockStatus]);
+            $product->unsetData('options');
+            $customOptions = $twicedProduct->getData('options');
+            if ($customOptions) {
+                $this->moduleHelper->setCustomOptions($customOptions);
+                $product->setHasOptions(true);
+            } else {
+                $product->setHasOptions(false);
+            }
+
         }
 
         return parent::beforeSave($product);

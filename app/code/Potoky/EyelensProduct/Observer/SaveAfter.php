@@ -41,15 +41,11 @@ class SaveAfter implements ObserverInterface
                         $product,
                         $this->moduleHelper->getCustomOptions()
                     );
-                    $product->setHasOptions(true);
-                } else {
-                    $product->unsetData('options');
-                    $product->setHasOptions(false);
                 }
                 break;
 
             case 'simple':
-                if ($product->getStatus() == 0 || $product->getQuantityAndStockStatus()['is_in_stock'] == 0) {
+                if ($product->getStatus() == 0 || $this->moduleHelper->stockStatus($product) == 0) {
                     $connection = $this->moduleHelper->getResource()->getConnection();
                     $select = $connection->select()
                         ->from(
@@ -62,7 +58,7 @@ class SaveAfter implements ObserverInterface
                     $rows = $connection->fetchAll($select);
                     foreach ($rows as $row) {
                         $eyelens = $this->moduleHelper->getProductRepository()->getById($row['product_id']);
-                        $eyelens->setStatus(0);
+                        $eyelens->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
                         $this->moduleHelper->getProductRepository()->save($eyelens);
                     }
                 }

@@ -157,6 +157,23 @@ class Data extends AbstractHelper
     }
 
     /**
+     * geter-seter
+     *
+     * @param $product
+     * @return void|int
+     */
+    public function stockStatus($product, $setValues = [])
+    {
+        if (!empty($setValues)) {
+            $product->setQuantityAndStockStatus(['qty' => $setValues['qty'], 'is_in_stock' => $setValues['is_in_stock']]);
+
+            return;
+        }
+
+        return $product->getStockData()['is_in_stock'] ?? $product->getQuantityAndStockStatus()['is_in_stock'] ?? 0;
+    }
+
+    /**
      * based on prepared Custom Options data
      * build an array acceptable for
      * creating and storing Custom Options as
