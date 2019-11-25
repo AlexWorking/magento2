@@ -1,11 +1,11 @@
 <?php
 
-
 namespace Potoky\EyelensProduct\Observer;
 
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Potoky\EyelensProduct\Helper\Data as ModuleHelper;
+
 class SaveAfter implements ObserverInterface
 {
     /**
@@ -16,7 +16,9 @@ class SaveAfter implements ObserverInterface
 
     /**
      * SaveAfter constructor.
+     *
      * @param ModuleHelper $moduleHelper
+     * @return void
      */
     public function __construct(ModuleHelper $moduleHelper)
     {

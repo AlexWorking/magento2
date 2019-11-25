@@ -1,19 +1,21 @@
 <?php
 namespace Potoky\EyelensProduct\Model\Import;
 
-use Magento\ImportExport\Model\Import\Entity\AbstractEntity;
-use Potoky\EyelensProduct\Helper\Data as ModuleHelper;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\ProductFactory;
-use Magento\Framework\Api\SearchCriteriaBuilder;
-use Magento\Store\Model\StoreManagerInterface;
 use Magento\Eav\Model\Config;
-use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingErrorAggregatorInterface;
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Json\Helper\Data as JsonHelper;
+use Magento\ImportExport\Helper\Data as ImportExportData;
+use Magento\ImportExport\Model\Import\Entity\AbstractEntity;
+use Magento\ImportExport\Model\Import\ErrorProcessing\ProcessingErrorAggregatorInterface;
 use Magento\ImportExport\Model\ResourceModel\Helper as ResourceHelper;
 use Magento\ImportExport\Model\ResourceModel\Import\Data as ImportData;
-use Magento\ImportExport\Helper\Data as ImportExportData;
-use Magento\Framework\Json\Helper\Data as JsonHelper;
+use Magento\Store\Model\StoreManagerInterface;
+use Potoky\EyelensProduct\Helper\Data as ModuleHelper;
+use Magento\Framework\Message\ManagerInterface;
 
 class Eyelens extends AbstractEntity
 {
@@ -94,14 +96,27 @@ class Eyelens extends AbstractEntity
     private $finalImportData = [];
 
     /**
+     *
+     * @var ManagerInterface
+     */
+    private $messageManager;
+
+    /**
      * Eyelens constructor.
      *
      * @param ModuleHelper $moduleHelper
      * @param ProductRepositoryInterface $productRepository
-     * @param ProductFactory
-     * @param SearchCriteriaBuilder
-     * @param Config $config
-     *
+     * @param ProductFactory $productFactory
+     * @param SearchCriteriaBuilder $searchCriteriaBuilder
+     * @param StoreManagerInterface $storeManager
+     * @param Config $eavConfig
+     * @param ProcessingErrorAggregatorInterface $errorAggregator
+     * @param ResourceConnection $resource
+     * @param ResourceHelper $resourceHelper
+     * @param ImportData $importData
+     * @param ImportExportData $importExportData
+     * @param JsonHelper $jsonHelper
+     * @param ManagerInterface $messageManager
      */
     public function __construct(
         ModuleHelper $moduleHelper,
@@ -115,7 +130,8 @@ class Eyelens extends AbstractEntity
         ResourceHelper $resourceHelper,
         ImportData $importData,
         ImportExportData $importExportData,
-        JsonHelper $jsonHelper
+        JsonHelper $jsonHelper,
+        ManagerInterface $messageManager
     ) {
         $this->moduleHelper = $moduleHelper;
         $this->productRepository = $productRepository;
@@ -129,6 +145,7 @@ class Eyelens extends AbstractEntity
         $this->_dataSourceModel = $importData;
         $this->_importExportData = $importExportData;
         $this->jsonHelper = $jsonHelper;
+        $this->messageManager =  $messageManager;
 
         // adding error message templates
         $this->errorMessageTemplates[self::ERROR_CODE_REQUIRED_ATTRIBUTE_MISSING] = 'Missing required value for field: %s.';
@@ -149,12 +166,11 @@ class Eyelens extends AbstractEntity
     }
 
     /**
-     * Row validation
+     * Row validation.
      *
      * @param array $rowData
      * @param int $rowNum
-     *
-     * @return bool
+     * @return boolean
      */
     public function validateRow(array $rowData, $rowNum)
     {
@@ -201,23 +217,14 @@ class Eyelens extends AbstractEntity
             $sku = $product->getSku();
             $product->setName($this->finalImportData[$sku]['name']);
             $product->setPrice($this->finalImportData[$sku]['price']);
-            $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
-            $options = $brandAttribute->getSource()->getAllOptions();
-            $brandId = null;
-            foreach ($options as $option) {
-                if ($option['label'] == $this->finalImportData[$sku]['brand']) {
-                    $brandId = $option['value'];
-                    break;
-                }
-            }
-            if ($brandId) {
-                $product->setCustomAttribute('manufacturer', $brandId);
-            }
+
+            $this->setBrand($product, $sku);
 
             $this->moduleHelper->assignCustomOptionsToProduct(
                 $product,
                 $this->finalImportData[$sku]['custom_options']
             );
+
             $toProcessSkus = array_diff($toProcessSkus, [$sku]);
             $this->productRepository->save($product);
         }
@@ -229,31 +236,14 @@ class Eyelens extends AbstractEntity
             $product->setName($this->finalImportData[$toProcessSku]['name']);
             $product->setPrice($this->finalImportData[$toProcessSku]['price']);
             $product->setAttributeSetId(4);
-            $product->setStatus(0);
+            $product->setStatus(1);
             $product->setWeight(1);
             $product->setVisibility(1);
 
-            $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
-            $options = $brandAttribute->getSource()->getAllOptions();
-            $brandId = null;
-            foreach ($options as $option) {
-                if ($option['label'] == $this->finalImportData[$toProcessSku]['brand']) {
-                    $brandId = $option['value'];
-                    break;
-                }
-            }
-            if ($brandId) {
-                $product->setCustomAttribute('manufacturer', $brandId);
-            }
+            $this->setBrand($product, $toProcessSku);
 
             $defaultWebsiteId = $this->storeManager->getDefaultStoreView()->getWebsiteId();
             $product->setWebsiteIds([$defaultWebsiteId]);
-
-            $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
-            $brandId = $brandAttribute->getSource()->getOptionId($this->finalImportData[$toProcessSku]['brand']);
-            if ($brandId) {
-                $product->setCustomAttribute('manufacturer', $brandId);
-            }
 
             $product->save();
             $this->moduleHelper->assignCustomOptionsToProduct(
@@ -266,10 +256,11 @@ class Eyelens extends AbstractEntity
     }
 
     /**
-     * change row data before saving in DB table
+     * Change row data before saving in DB table
      *
      * @param array $rowData
      * @return array
+     * @throws LocalizedException
      */
     protected function _prepareRowForDb(array $rowData)
     {
@@ -284,8 +275,9 @@ class Eyelens extends AbstractEntity
     }
 
     /**
-     * Init message templates
+     * Init message templates.
      *
+     * @return void
      */
     private function initMessageTemplates()
     {
@@ -321,17 +313,16 @@ class Eyelens extends AbstractEntity
 
     /**
      * Validate Custom Options obtained from source file
-     * and convert them to format they will be saved in
+     * and convert them into format they will be saved in
      * in importexport table
      *
-     * @param $customOptions
-     * @param $rowNum
-     * @return array|bool
+     * @param string $customOptions
+     * @param int $rowNum
+     * @return array|boolean
      */
     private function validateAndPrepareCustomOptions($customOptions, $rowNum)
     {
         if ($customOptions === 0 || $customOptions === null) {
-
             return [];
         }
         $customOptions = explode(PHP_EOL, $customOptions);
@@ -365,9 +356,10 @@ class Eyelens extends AbstractEntity
     }
 
     /**
-     * Decrese rows count comming from the importexport table
-     * by merging all the rows with the same skus in one row
+     * Decrees rows count coming from the importexport table
+     * by merging all the rows with the same skus in one row.
      *
+     * @return void
      */
     private function compressPreliminaryImportData()
     {
@@ -382,7 +374,7 @@ class Eyelens extends AbstractEntity
             if (!array_key_exists($val['sku'], $processedSkusArr)) {
                 $this->finalImportData[$val['sku']] = $val;
                 $processedSkusArr[$val['sku']] = $num;
-            } else if (!$this->mergeRecords($val, $val['sku'])) {
+            } elseif (!$this->mergeRecords($val, $val['sku'])) {
                 $this->addRowError(
                     self::ERROR_CODE_INCORRECT_VALUE_DISCORDANCE,
                     $processedSkusArr[$val['sku']],
@@ -392,15 +384,14 @@ class Eyelens extends AbstractEntity
                 unset($this->finalImportData[$val['sku']]);
             }
         }
-
     }
 
     /**
-     * Merge together two recordswith the same sku
+     * Merge together two records with the same sku
      *
-     * @param $currentRecord
-     * @param $meringSku
-     * @return bool
+     * @param array $currentRecord
+     * @param string $meringSku
+     * @return boolean
      */
     private function mergeRecords($currentRecord, $meringSku)
     {
@@ -433,21 +424,19 @@ class Eyelens extends AbstractEntity
             return false;
         }
 
-
         return true;
     }
 
     /**
-     * Merge Custom Options when merging records
+     * Merge Custom Options when merging records.
      *
-     * @param $options1
-     * @param $options2
+     * @param array $options1
+     * @param array $options2
      * @return array
      */
     private function mergeCustomOptions($options1, $options2)
     {
-        $toggleKeyStringiness = function($key, $toString)
-        {
+        $toggleKeyStringiness = function ($key, $toString) {
             if ($toString === true) {
                 $key = '_' . $key;
 
@@ -463,7 +452,7 @@ class Eyelens extends AbstractEntity
             return false;
         };
 
-        $this->stringifyOptionKeys(true, $toggleKeyStringiness,$options1, $options2);
+        $this->stringifyOptionKeys(true, $toggleKeyStringiness, $options1, $options2);
         $mergeArray = array_merge_recursive(
             $options1,
             $options2
@@ -505,5 +494,33 @@ class Eyelens extends AbstractEntity
             }
         }
         unset($mergingOptionsSingle);
+    }
+
+    /**
+     * Sets brand for the Product if that
+     * brand is among manufacturer attribute values
+     *
+     * @param $product
+     * @param $sku
+     * @return void
+     * @throws LocalizedException
+     */
+    private function setBrand($product, $sku)
+    {
+        /** @var \Magento\Catalog\Model\Product $product */
+        $brandAttribute = $this->eavConfig->getAttribute('catalog_product', 'manufacturer');
+        $options = $brandAttribute->getSource()->getAllOptions();
+        $brandId = null;
+        foreach ($options as $option) {
+            if ($option['label'] == $this->finalImportData[$sku]['brand']) {
+                $brandId = $option['value'];
+                break;
+            }
+        }
+        if ($brandId) {
+            $product->setCustomAttribute('manufacturer', $brandId);
+        } else {
+            $this->messageManager->addNoticeMessage(sprintf("Brand %s is not in the list of available brands. You need first to enter it into the database"));
+        }
     }
 }

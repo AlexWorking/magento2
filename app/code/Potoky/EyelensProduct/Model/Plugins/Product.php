@@ -1,9 +1,9 @@
 <?php
 
-
 namespace Potoky\EyelensProduct\Model\Plugins;
 
 use Potoky\EyelensProduct\Helper\Data as ModuleHelper;
+
 class Product
 {
     /**
@@ -24,14 +24,15 @@ class Product
 
     public function afterInitProduct($subject, $product)
     {
-        $typeInstance = $product->getTypeInstance();
-        if ($typeInstance::TYPE_CODE == 'eyelens') {
-            $twicedProductId = $typeInstance->getAssociatedProductIds($product)[0];
-            $twicedProduct = $this->moduleHelper->getProductRepository()->getById($twicedProductId);
-            $options = $twicedProduct->getOptions() ?? null;
-            if ($options) {
-                $product->setData('options', $options);
-                $product->setData('has_options', 1);
+        if ($product->getTypeId() == 'eyelens') {
+            $twicedProductId = ($product->getTypeInstance()->getAssociatedProductIds($product)[0]) ?? false;
+            if ($twicedProductId) {
+                $twicedProduct = $this->moduleHelper->getProductRepository()->getById($twicedProductId);
+                $options = $twicedProduct->getOptions() ?? null;
+                if ($options) {
+                    $product->setData('options', $options);
+                    $product->setData('has_options', 1);
+                }
             }
         }
 

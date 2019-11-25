@@ -562,41 +562,6 @@ class Eyelens extends AbstractModifier
             'status' => $this->getTextColumn('status', true, __('Status'), 50),
             'sku' => $this->getTextColumn('sku', false, __('SKU'), 60),
             'price' => $this->getTextColumn('price', true, __('Price'), 70),
-            'qty' => [
-                'arguments' => [
-                    'data' => [
-                        'config' => [
-                            'dataType' => Form\Element\DataType\Number::NAME,
-                            'formElement' => Form\Element\Input::NAME,
-                            'componentType' => Form\Field::NAME,
-                            'dataScope' => 'qty',
-                            'label' => __('Default Quantity'),
-                            'fit' => true,
-                            'additionalClasses' => 'admin__field-small',
-                            'sortOrder' => 80,
-                            'validation' => [
-                                'validate-number' => true,
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            'positionCalculated' => [
-                'arguments' => [
-                    'data' => [
-                        'config' => [
-                            'label' => __('Position'),
-                            'dataType' => Form\Element\DataType\Number::NAME,
-                            'formElement' => Form\Element\Input::NAME,
-                            'componentType' => Form\Field::NAME,
-                            'elementTmpl' => 'Magento_GroupedProduct/components/position',
-                            'sortOrder' => 90,
-                            'fit' => true,
-                            'dataScope' => 'positionCalculated'
-                        ],
-                    ],
-                ],
-            ],
             'actionDelete' => [
                 'arguments' => [
                     'data' => [

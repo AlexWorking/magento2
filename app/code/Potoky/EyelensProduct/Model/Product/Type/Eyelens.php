@@ -1,10 +1,8 @@
 <?php
 
-
 namespace Potoky\EyelensProduct\Model\Product\Type;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\Catalog\Model\Product\Exception;
 use Magento\Catalog\Model\ProductFactory;
 use Potoky\EyelensProduct\Helper\Data as ModuleHelper;
 
@@ -366,7 +364,6 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     protected function _prepareProduct(\Magento\Framework\DataObject $buyRequest, $product, $processMode)
     {
         $associatedId = $this->getAssociatedProductIds($product)[0];
-        $options = $product->getOptions();
         $firstLens = $this->productFactory->create()->loadByAttribute('entity_id', $associatedId);
 
         if (!$firstLens->getId()) {
@@ -389,9 +386,6 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 
         return [$firstLens, $secondLens];
     }
-
-    //options_ARR=>0_OBJ->values_ARR=>1150_OBJ->data_ARR title => -7 | option_type_id => 1150
-    //options_ARR=>0_OBJ->data_ARR title => "Power - Sph" option_id => 505
 
     /**
      * Retrieve products divided into groups required to purchase
@@ -470,6 +464,9 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
                 $twicedProduct = $this->productRepository->getById($twicedProductId);
                 $twicedStockStatus = $this->moduleHelper->stockStatus($twicedProduct);
                 $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => $twicedStockStatus]);
+                if ($twicedProduct->getStatus() == 2) {
+                    $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => 0]);
+                }
             }
         } else {
             $this->saveFromPost = false;

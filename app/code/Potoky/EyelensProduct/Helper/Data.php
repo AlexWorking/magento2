@@ -1,13 +1,12 @@
 <?php
 
-
 namespace Potoky\EyelensProduct\Helper;
 
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\Product\OptionFactory;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
-use Magento\Catalog\Model\Product\OptionFactory;
 use Magento\Framework\App\ResourceConnection;
-use Magento\Catalog\Api\ProductRepositoryInterface;
 
 class Data extends AbstractHelper
 {
@@ -30,18 +29,12 @@ class Data extends AbstractHelper
     private $productRepository;
 
     /**
-     * Custom options to be assigned to Eyelens Product
-     *
-     * @var null
-     */
-    private $customOptions = null;
-
-    /**
      * Data constructor.
      * @param Context $context
      * @param OptionFactory $optionFactory
-     * @param ResourceConnection $recource
+     * @param ResourceConnection $resource
      * @param ProductRepositoryInterface $productRepository
+     * @return void
      */
     public function __construct(
         Context $context,
@@ -56,7 +49,7 @@ class Data extends AbstractHelper
     }
 
     /**
-     * getter for the resource
+     * Getter for the resource.
      *
      * @return ResourceConnection
      */
@@ -66,8 +59,9 @@ class Data extends AbstractHelper
     }
 
     /**
-     * getter for product repository
+     * Getter for product repository.
      *
+     * @return ProductRepositoryInterface
      */
     public function getProductRepository()
     {
@@ -75,27 +69,7 @@ class Data extends AbstractHelper
     }
 
     /**
-     * getter for custom options
-     *
-     * @return array
-     */
-    public function getCustomOptions()
-    {
-        return $this->customOptions;
-    }
-
-    /**
-     * Public setter for customoptions
-     *
-     * @return void
-     */
-    public function setCustomOptions($customOptions)
-    {
-       $this->customOptions = $customOptions;
-    }
-
-    /**
-     * get Twiced Product from the Post request undergoing
+     * Get Twiced Product from the Post request undergoing
      * necessary validations.
      *
      * @param $product
@@ -107,24 +81,26 @@ class Data extends AbstractHelper
         $post = $this->_getRequest()->getPost();
 
         if (!isset($post['links']) || empty($post['links'])) {
-
             return null;
         }
 
         $links = $post['links'];
 
         if (!isset($links['twiced']) || count($links) > 1 || count($links['twiced']) > 1) {
-
-            throw new \Exception("The number of linked products or link types exceed one.");
+            throw new \Exception("The number of linked products or link types exceeds one.");
         }
 
+        /** @var \Magento\Catalog\Model\Product $product*/
+        /** @var \Magento\Catalog\Model\Product $associatedProduct*/
         $associatedProduct = ($product->getTypeInstance()->getAssociatedProducts($product)[0]) ?? null;
 
-        if ($associatedProduct && $associatedProduct->getId() != $links['twiced'][0]['id']) {
-
+        if ($associatedProduct &&
+            $associatedProduct->getId() != $links['twiced'][0]['id'] &&
+            $associatedProduct->getStatus() == 2
+        ) {
             throw new \Exception(sprintf(
                 "There is already a currently disabled Twiced Product with sku of %s being linked to this Product",
-                $links['twiced'][0]['sku']
+                $associatedProduct->getSku()
             ));
         }
 
@@ -132,17 +108,16 @@ class Data extends AbstractHelper
     }
 
     /**
-     * bind Custom Options to the Product.
+     * Bind Custom Options to the Product.
      *
      * @param $product
      * @param array $options
-     * @param boolean $areAlreadyBuild
-     * @param boolean $unsetBefore
-     *
+     * @return void
      * @throws \Exception
      */
     public function assignCustomOptionsToProduct($product, $options)
     {
+        /** @var \Magento\Catalog\Model\Product $product*/
         $product->unsetData('options');
         $options = $this->buildOptionArray($options);
 
@@ -157,13 +132,14 @@ class Data extends AbstractHelper
     }
 
     /**
-     * geter-seter
+     * Getter/Setter of the product's stock status.
      *
      * @param $product
      * @return void|int
      */
     public function stockStatus($product, $setValues = [])
     {
+        /** @var \Magento\Catalog\Model\Product $product*/
         if (!empty($setValues)) {
             $product->setQuantityAndStockStatus(['qty' => $setValues['qty'], 'is_in_stock' => $setValues['is_in_stock']]);
 
@@ -174,10 +150,10 @@ class Data extends AbstractHelper
     }
 
     /**
-     * based on prepared Custom Options data
+     * Based on prepared Custom Options data
      * build an array acceptable for
      * creating and storing Custom Options as
-     * Product Custom Options in core tables
+     * Product Custom Options in core tables.
      *
      * @param array $optionsBefore
      * @return array
