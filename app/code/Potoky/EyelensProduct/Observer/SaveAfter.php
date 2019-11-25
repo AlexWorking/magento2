@@ -34,35 +34,27 @@ class SaveAfter implements ObserverInterface
     {
         $product = $observer->getData('product');
 
-        switch ($product->getTypeId()) {
-            case 'eyelens':
-                if ($this->moduleHelper->getCustomOptions()) {
-                    $this->moduleHelper->assignCustomOptionsToProduct(
-                        $product,
-                        $this->moduleHelper->getCustomOptions()
-                    );
+        if ($product->getTypeId() == 'simple') {
+            if ($product->getStatus() == 2 || $this->moduleHelper->stockStatus($product) == 0) {
+                $connection = $this->moduleHelper->getResource()->getConnection();
+                $cond = sprintf(
+                    "l.linked_product_id=%s AND link_type_id=%s",
+                    $product->getId(),
+                    \Potoky\EyelensProduct\Model\Product\Type\Eyelens::LINK_TYPE_EYELENS
+                );
+                $select = $connection->select()
+                    ->from(
+                        ['l' => 'catalog_product_link'],
+                        ['product_id']
+                    )->where($cond);
+                $rows = $connection->fetchAll($select);
+                foreach ($rows as $row) {
+                    $eyelens = $this->moduleHelper->getProductRepository()->getById($row['product_id']);
+                    $eyelens->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
+                    $eyelens->setSaveFromPost(false);
+                    $this->moduleHelper->getProductRepository()->save($eyelens);
                 }
-                break;
-
-            case 'simple':
-                if ($product->getStatus() == 0 || $this->moduleHelper->stockStatus($product) == 0) {
-                    $connection = $this->moduleHelper->getResource()->getConnection();
-                    $select = $connection->select()
-                        ->from(
-                            ['l' => 'catalog_product_link'],
-                            ['product_id']
-                        )->where(
-                            "l.linked_product_id=?",
-                            $product->getId()
-                        );
-                    $rows = $connection->fetchAll($select);
-                    foreach ($rows as $row) {
-                        $eyelens = $this->moduleHelper->getProductRepository()->getById($row['product_id']);
-                        $eyelens->setQuantityAndStockStatus(['qty' => false, 'is_in_stock' => 0]);
-                        $this->moduleHelper->getProductRepository()->save($eyelens);
-                    }
-                }
-                break;
+            }
         }
 
         return $this;

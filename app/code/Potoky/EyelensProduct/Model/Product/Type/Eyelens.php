@@ -91,6 +91,12 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     private $moduleHelper;
 
     /**
+     *
+     * @var boolean
+     */
+    private $saveFromPost = true;
+
+    /**
      * @param ProductFactory
      * @param \Magento\Catalog\Model\Product\Option $catalogProductOption
      * @param \Magento\Eav\Model\Config $eavConfig
@@ -353,6 +359,7 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
      * @param \Magento\Catalog\Model\Product $product
      * @param string $processMode
      * @return \Magento\Framework\Phrase|array|string
+     * @throws \Magento\Framework\Exception\LocalizedException
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.NPathComplexity)
      */
@@ -370,10 +377,15 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
 
         $qty = $buyRequest->getQty();
 
-        $firstLens->addCustomOption('add ' . $product->getSku(), 'first')->setQty($qty)->setCartQty($qty);
-        $secondLens->addCustomOption('add ' . $product->getSku(), 'second')->setQty($qty)->setCartQty($qty);
+        $options = $buyRequest->getData('options') ?? [];
 
-        $secondLens->addCustomOption('separate_add', 'second');
+        if (!empty($options)) {
+            $firstLens = $this->prepareOptions($firstLens, $options);
+            $secondLens = $this->prepareOptions($secondLens, $options);
+        }
+        $firstLens->addCustomOption('add ' . $product->getSku(), 'first')->setQty($qty)->setCartQty($qty);
+
+        $secondLens->addCustomOption('add ' . $product->getSku(), 'second')->setQty($qty)->setCartQty($qty);
 
         return [$firstLens, $secondLens];
     }
@@ -445,32 +457,22 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
     {
         $product->unsetData($this->_keyTwicedProducts);
 
-        try {
-            $twicedProductId = $this->moduleHelper->getTwicedProductIdFromPost($product);
-        } catch (\Exception $e) {
-            throw new \Exception($e->getMessage());
-        }
-
-        $twicedProduct = null;
-
-        if (!$twicedProductId) {
-            $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => 0]);
-        } else {
-            $twicedProduct = $this->productRepository->getById($twicedProductId);
-        }
-
-        if ($twicedProduct) {
-            $twicedStockStatus = $this->moduleHelper->stockStatus($twicedProduct);
-            $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => $twicedStockStatus]);
-            $product->unsetData('options');
-            $customOptions = $twicedProduct->getData('options');
-            if ($customOptions) {
-                $this->moduleHelper->setCustomOptions($customOptions);
-                $product->setHasOptions(true);
-            } else {
-                $product->setHasOptions(false);
+        if ($this->saveFromPost) {
+            try {
+                $twicedProductId = $this->moduleHelper->getTwicedProductIdFromPost($product);
+            } catch (\Exception $e) {
+                throw new \Exception($e->getMessage());
             }
 
+            if (!$twicedProductId) {
+                $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => 0]);
+            } else {
+                $twicedProduct = $this->productRepository->getById($twicedProductId);
+                $twicedStockStatus = $this->moduleHelper->stockStatus($twicedProduct);
+                $this->moduleHelper->stockStatus($product, ['qty' => false, 'is_in_stock' => $twicedStockStatus]);
+            }
+        } else {
+            $this->saveFromPost = false;
         }
 
         return parent::beforeSave($product);
@@ -491,5 +493,32 @@ class Eyelens extends \Magento\Catalog\Model\Product\Type\AbstractType
             }
         }
         return $prices ? min($prices) : 0;
+    }
+
+    /**
+     * Public setter for $savingFromOdserver
+     *
+     * @param $booleann
+     */
+    public function setSaveFromPost($booleann)
+    {
+        $this->saveFromPost = $booleann;
+    }
+
+    /**
+     * @param $buyRequest
+     * @param $product
+     * @param $processMode
+     * @return string
+     */
+    private function prepareOptions($product, $options)
+    {
+        $optionIds = array_keys($options);
+        $product->addCustomOption('option_ids', implode(',', $optionIds));
+        foreach ($options as $optionId => $optionValue) {
+            $product->addCustomOption(self::OPTION_PREFIX . $optionId, $optionValue);
+        }
+
+        return $product;
     }
 }
