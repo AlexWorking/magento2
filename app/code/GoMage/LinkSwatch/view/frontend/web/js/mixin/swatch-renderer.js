@@ -11,6 +11,17 @@ define([
             return original();
         });*/
 
+        var _newInit = targetModule.prototype._init;
+        _newInit = wrapper.wrap(_newInit, function (original) {
+            original();
+            var preselect = this.options.jsonConfig.preselect;
+            if (preselect !== undefined) {
+                preselect = preselect.split(':');
+                var selector = '[id*="-' + preselect[0] + '-item-' + preselect[1] + '"]';
+                $(selector).click()
+            }
+        });
+
         function _newRenderSwatchOptions(config, controlId) {
             var self = this,
                 optionConfig = this.options.jsonSwatchConfig[config.id],
@@ -107,6 +118,7 @@ define([
             return html;
         }
 
+        targetModule.prototype._init = _newInit;
         targetModule.prototype._RenderSwatchOptions = _newRenderSwatchOptions;
 
         return targetModule;
