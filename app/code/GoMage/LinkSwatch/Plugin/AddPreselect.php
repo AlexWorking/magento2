@@ -92,6 +92,8 @@ class AddPreselect
         foreach ($options as $option) {
             if ($option['label'] === $attrVal) {
                 $attrVal = $option['value'];
+
+                break;
             }
         }
 

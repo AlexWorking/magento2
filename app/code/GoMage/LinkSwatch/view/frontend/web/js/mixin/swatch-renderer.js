@@ -17,8 +17,12 @@ define([
             var preselect = this.options.jsonConfig.preselect;
             if (preselect !== undefined) {
                 preselect = preselect.split(':');
-                var selector = '[id*="-' + preselect[0] + '-item-' + preselect[1] + '"]';
-                $(selector).click()
+                var selectedValue = $('[id*="-' + preselect[0] + '-item-' + preselect[1] + '"]'),
+                    classes = this.options.classes;
+                selectedValue.click()
+                var parentForLabel = selectedValue.closest('.' + classes.attributeClass);
+                parentForLabel.children('.' + classes.attributeLabelClass).remove();
+                parentForLabel.children('.' + classes.attributeSelectedOptionLabelClass).remove();
             }
         });
 
@@ -105,7 +109,7 @@ define([
                     html += '<a class="' + optionClass + ' image" ' + attr +
                         ' style="background: url(' + value + ') no-repeat center; background-size: initial;width:' +
                         swatchImageWidth + 'px; height:' + swatchImageHeight + 'px">' + '' +
-                        '</a>';
+                        '</a><div>' + this.label + '</div>';
                 } else if (type === 3) {
                     // Clear
                     html += '<div class="' + optionClass + '" ' + attr + '></div>';

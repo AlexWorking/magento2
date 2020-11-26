@@ -202,6 +202,8 @@ define([
             classes: {
                 attributeClass: 'swatch-attribute',
                 attributeLabelClass: 'swatch-attribute-label',
+
+
                 attributeSelectedOptionLabelClass: 'swatch-attribute-selected-option',
                 attributeOptionsWrapper: 'swatch-attribute-options',
                 attributeInput: 'swatch-input',
