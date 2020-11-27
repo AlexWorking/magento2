@@ -106,10 +106,10 @@ define([
                         '</div>';
                 } else if (type === 2) {
                     // Image
-                    html += '<a class="' + optionClass + ' image" ' + attr +
-                        ' style="background: url(' + value + ') no-repeat center; background-size: initial;width:' +
+                    html += '<div style="display: inline-block; margin-right: 10px;"><a class="' + optionClass + ' image" ' + attr +
+                        ' style="display:block; float: none; background: url(' + value + ') no-repeat center; background-size: initial;width:' +
                         swatchImageWidth + 'px; height:' + swatchImageHeight + 'px">' + '' +
-                        '</a><div>' + this.label + '</div>';
+                        '</a><span>' + this.label + '</span></div>';
                 } else if (type === 3) {
                     // Clear
                     html += '<div class="' + optionClass + '" ' + attr + '></div>';
